@@ -30,3 +30,8 @@ yarn-error.log*
 # Editor folders
 .vscode
 .idea
+
+# Database
+*.sqlite
+database.sqlite
+copia_limpia.sqlite
