@@ -33,7 +33,7 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
   else console.log('🗄️ SQLite conectado en:', DB_PATH);
 });
 
-const VALID_STORES = ['products', 'customers', 'suppliers', 'sales', 'purchases', 'settings', 'sellers', 'payments', 'users', 'authenticators'];
+const VALID_STORES = ['products', 'customers', 'suppliers', 'sales', 'purchases', 'settings', 'sellers', 'payments', 'users', 'authenticators', 'expenses'];
 
 db.serialize(() => {
   VALID_STORES.forEach(store => {
@@ -230,6 +230,13 @@ app.delete('/api/:store/:id', authenticateToken, (req: any, res: any) => {
   db.run(`DELETE FROM ${store} WHERE id = ?`, [id], (err) => {
     if (err) return res.status(500).json({ message: err.message });
     res.json({ success: true });
+  });
+});
+
+// --- API: 404 HANDLER ---
+app.all('/api/*', (req, res) => {
+  res.status(404).json({ 
+    message: `Endpoint de API no encontrado: ${req.method} ${req.originalUrl}` 
   });
 });
 

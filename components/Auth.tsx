@@ -33,20 +33,27 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         body: JSON.stringify(formData)
       });
 
-      const data = await response.json();
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Error en la autenticación');
-      }
+        if (!response.ok) {
+          throw new Error(data.message || 'Error en la autenticación');
+        }
 
-      if (isLogin) {
-        const userWithToken = { ...data.user, token: data.token };
-        localStorage.setItem('auth_token', data.token);
-        localStorage.setItem('user_data', JSON.stringify(data.user));
-        onLogin(userWithToken);
+        if (isLogin) {
+          const userWithToken = { ...data.user, token: data.token };
+          localStorage.setItem('auth_token', data.token);
+          localStorage.setItem('user_data', JSON.stringify(data.user));
+          onLogin(userWithToken);
+        } else {
+          alert('Registro exitoso. Ahora puedes iniciar sesión.');
+          setIsLogin(true);
+        }
       } else {
-        alert('Registro exitoso. Ahora puedes iniciar sesión.');
-        setIsLogin(true);
+        const text = await response.text();
+        console.error("Respuesta no JSON del servidor:", text);
+        throw new Error(`Error del servidor (${response.status}). Verifique su conexión o intente de nuevo.`);
       }
     } catch (err: any) {
       setError(err.message);

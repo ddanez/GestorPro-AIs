@@ -9,6 +9,7 @@ export enum AppTab {
   SELLERS = 'sellers',
   CXC = 'cxc',
   CXP = 'cxp',
+  EXPENSES = 'expenses',
   REPORTS = 'reports',
   SETTINGS = 'settings'
 }
@@ -129,6 +130,18 @@ export interface Purchase {
   discountUSD?: number;
   initialPaymentUSD?: number;
   paidAmountUSD?: number;
+}
+
+export interface Expense {
+  id: string;
+  date: string;
+  description: string;
+  category: string;
+  amountUSD: number;
+  amountBS: number;
+  exchangeRate: number;
+  paymentMethod: string;
+  notes?: string;
 }
 
 export type UserRole = 'admin' | 'seller';

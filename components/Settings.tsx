@@ -105,10 +105,20 @@ const Settings: React.FC<Props> = ({ company, setCompany, settings, setSettings,
     setCompany(newCompany);
     setSettings(newSettings);
     
-    await dbService.put('settings', { ...newCompany, id: 'company_info' });
-    await dbService.put('settings', { ...newSettings, id: 'app_settings' });
-    
-    alert('Configuración guardada correctamente.');
+    try {
+      await dbService.put('settings', { ...newCompany, id: 'company_info' });
+      await dbService.put('settings', { ...newSettings, id: 'app_settings' });
+      alert('Configuración guardada correctamente.');
+    } catch (err: any) {
+      if (err.message === "SESSION_EXPIRED") {
+        alert("Su sesión ha expirado. Por favor, inicie sesión de nuevo.");
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_data');
+        window.location.reload();
+      } else {
+        alert('Configuración guardada localmente. Error al sincronizar con el servidor.');
+      }
+    }
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -319,6 +329,11 @@ const Settings: React.FC<Props> = ({ company, setCompany, settings, setSettings,
     setPasswordError('');
     setPasswordSuccess('');
 
+    if (!passwordForm.current || !passwordForm.new || !passwordForm.confirm) {
+      setPasswordError('Todos los campos de contraseña son requeridos');
+      return;
+    }
+
     if (passwordForm.new !== passwordForm.confirm) {
       setPasswordError('Las contraseñas nuevas no coinciden');
       return;
@@ -338,11 +353,17 @@ const Settings: React.FC<Props> = ({ company, setCompany, settings, setSettings,
         })
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-
-      setPasswordSuccess('Contraseña actualizada correctamente');
-      setPasswordForm({ current: '', new: '', confirm: '' });
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Error al cambiar contraseña');
+        setPasswordSuccess('Contraseña actualizada correctamente');
+        setPasswordForm({ current: '', new: '', confirm: '' });
+      } else {
+        const text = await response.text();
+        console.error("Respuesta no JSON del servidor:", text);
+        throw new Error(`Error del servidor (${response.status}). Intente de nuevo más tarde.`);
+      }
     } catch (err: any) {
       setPasswordError(err.message);
     } finally {
@@ -481,7 +502,6 @@ const Settings: React.FC<Props> = ({ company, setCompany, settings, setSettings,
                       className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 text-xs font-bold outline-none focus:border-orange-500/50"
                       value={passwordForm.current}
                       onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
-                      required
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -491,7 +511,6 @@ const Settings: React.FC<Props> = ({ company, setCompany, settings, setSettings,
                       className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 text-xs font-bold outline-none focus:border-orange-500/50"
                       value={passwordForm.new}
                       onChange={(e) => setPasswordForm({ ...passwordForm, new: e.target.value })}
-                      required
                     />
                     <input 
                       type="password" 
@@ -499,7 +518,6 @@ const Settings: React.FC<Props> = ({ company, setCompany, settings, setSettings,
                       className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 text-xs font-bold outline-none focus:border-orange-500/50"
                       value={passwordForm.confirm}
                       onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
-                      required
                     />
                   </div>
                   <button 
