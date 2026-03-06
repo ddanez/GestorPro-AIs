@@ -1,7 +1,7 @@
 // db.ts - Implementación con Backend API y Fallback a IndexedDB
 const DB_NAME = 'GestorProDB';
 const DB_VERSION = 3;
-const STORES = ['products', 'customers', 'suppliers', 'sales', 'purchases', 'settings', 'sellers', 'payments', 'authenticators'];
+const STORES = ['products', 'customers', 'suppliers', 'sales', 'purchases', 'settings', 'sellers', 'payments', 'authenticators', 'expenses'];
 
 export class DBService {
   private db: IDBDatabase | null = null;
@@ -59,12 +59,15 @@ export class DBService {
       try {
         const response = await fetch(`/api/${storeName}`, { headers: this.getHeaders() });
         if (response.ok) {
-          const data = await response.json();
-          // Sincronizar localmente
-          const store = await this.getStore(storeName, 'readwrite');
-          store.clear();
-          data.forEach((item: any) => store.put(item));
-          return data;
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.indexOf("application/json") !== -1) {
+            const data = await response.json();
+            // Sincronizar localmente
+            const store = await this.getStore(storeName, 'readwrite');
+            store.clear();
+            data.forEach((item: any) => store.put(item));
+            return data;
+          }
         }
       } catch (err) {
         console.warn(`Error al obtener ${storeName} del backend, usando local:`, err);
@@ -91,12 +94,17 @@ export class DBService {
     // Intentar guardar en el backend
     if (this.token) {
       try {
-        await fetch(`/api/${storeName}`, {
+        const response = await fetch(`/api/${storeName}`, {
           method: 'POST',
           headers: this.getHeaders(),
           body: JSON.stringify(item)
         });
-      } catch (err) {
+        
+        if (response.status === 401 || response.status === 403) {
+          throw new Error("SESSION_EXPIRED");
+        }
+      } catch (err: any) {
+        if (err.message === "SESSION_EXPIRED") throw err;
         console.warn(`Error al guardar ${storeName} en el backend:`, err);
       }
     }
@@ -141,8 +149,14 @@ export class DBService {
           headers: this.getHeaders() 
         });
         if (!response.ok) {
-          const errorData = await response.json();
-          console.warn("⚠️ El backend devolvió error al resetear:", errorData.message);
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.indexOf("application/json") !== -1) {
+            const errorData = await response.json();
+            console.warn("⚠️ El backend devolvió error al resetear:", errorData.message);
+          } else {
+            const text = await response.text();
+            console.warn("⚠️ El backend devolvió una respuesta no JSON:", text);
+          }
         } else {
           console.log("✅ Backend reseteado correctamente");
         }

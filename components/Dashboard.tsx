@@ -9,18 +9,21 @@ import {
   HandCoins,
   DollarSign,
   PiggyBank,
-  Trash2
+  Trash2,
+  Wallet
 } from 'lucide-react';
-import { Sale, Purchase, Product, AppSettings } from '../types';
+import { Sale, Purchase, Product, AppSettings, Expense } from '../types';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface Props {
   sales: Sale[];
   purchases: Purchase[];
+  expenses: Expense[];
   products: Product[];
   settings: AppSettings;
 }
 
-const Dashboard: React.FC<Props> = ({ sales, purchases, products, settings }) => {
+const Dashboard: React.FC<Props> = ({ sales, purchases, expenses, products, settings }) => {
   const today = new Date().toISOString().split('T')[0];
   
   // Memoizar estadísticas para rendimiento
@@ -33,16 +36,31 @@ const Dashboard: React.FC<Props> = ({ sales, purchases, products, settings }) =>
     const creditSalesToday = grossSalesToday - cashSalesToday;
     const collectionsToday = cashSalesToday; 
     const totalPurchasesToday = purchasesToday.reduce((sum, p) => sum + (p.totalUSD || 0), 0);
+    const totalExpensesToday = expenses.filter(e => e.date.startsWith(today)).reduce((sum, e) => sum + (e.amountUSD || 0), 0);
     const wasteTodayUSD = (products.reduce((sum, p) => sum + ((p.mermaTotal || 0) * (p.costUSD || 0)), 0) / 30) || 0;
     
     const totalCreditsPending = sales.filter(s => s.status === 'pending').reduce((sum, s) => sum + ((s.totalUSD || 0) - (s.paidAmountUSD || 0)), 0);
     const lowStockProducts = products.filter(p => (p.stock || 0) <= (p.minStock || 0));
 
+    // Datos para el gráfico de tendencia (últimos 7 días)
+    const last7Days = [...Array(7)].map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const daySales = sales.filter(s => s.date.startsWith(dateStr)).reduce((sum, s) => sum + s.totalUSD, 0);
+      return {
+        name: d.toLocaleDateString('es-VE', { weekday: 'short' }),
+        total: daySales,
+        date: dateStr
+      };
+    }).reverse();
+
     return {
       grossSalesToday, cashSalesToday, creditSalesToday, collectionsToday,
-      totalPurchasesToday, wasteTodayUSD, totalCreditsPending, lowStockProducts
+      totalPurchasesToday, totalExpensesToday, wasteTodayUSD, totalCreditsPending, lowStockProducts,
+      last7Days
     };
-  }, [sales, purchases, products, today]);
+  }, [sales, purchases, expenses, products, today]);
 
   const StatCard = ({ label, value, icon: Icon, color, isToday }: any) => (
     <div className="bg-[#1e293b] p-5 rounded-[2rem] border border-slate-700/50 shadow-lg group hover:border-slate-500 transition-all">
@@ -76,8 +94,8 @@ const Dashboard: React.FC<Props> = ({ sales, purchases, products, settings }) =>
         <StatCard label="Ventas Contado" value={stats.cashSalesToday} icon={DollarSign} color="bg-emerald-500" isToday />
         <StatCard label="Ventas Crédito" value={stats.creditSalesToday} icon={CreditCard} color="bg-rose-500" isToday />
         <StatCard label="Cobranzas Hoy" value={stats.collectionsToday} icon={PiggyBank} color="bg-indigo-500" isToday />
+        <StatCard label="Gastos Hoy" value={stats.totalExpensesToday} icon={Wallet} color="bg-rose-500" isToday />
         <StatCard label="Compras Hoy" value={stats.totalPurchasesToday} icon={ShoppingCart} color="bg-amber-500" isToday />
-        <StatCard label="Merma Hoy" value={stats.wasteTodayUSD} icon={Trash2} color="bg-slate-400" isToday />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -108,6 +126,33 @@ const Dashboard: React.FC<Props> = ({ sales, purchases, products, settings }) =>
         </div>
 
         <div className="md:col-span-2 bg-[#1e293b] p-6 rounded-[2.5rem] border border-slate-700">
+           <div className="flex justify-between items-center mb-6">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                 <TrendingUp size={14} /> Tendencia de Ventas (7 días)
+              </h3>
+              <span className="text-[8px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-lg uppercase tracking-widest">En Vivo</span>
+           </div>
+           
+           <div className="h-[200px] w-full mb-6">
+              <ResponsiveContainer width="100%" height="100%">
+                 <BarChart data={stats.last7Days}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                    <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis hide />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }}
+                      itemStyle={{ color: '#fff', fontSize: '10px' }}
+                      labelStyle={{ color: '#64748b', fontSize: '10px', marginBottom: '4px' }}
+                    />
+                    <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                       {stats.last7Days.map((entry, index) => (
+                         <Cell key={`cell-${index}`} fill={entry.date === today ? '#f97316' : '#6366f1'} />
+                       ))}
+                    </Bar>
+                 </BarChart>
+              </ResponsiveContainer>
+           </div>
+
            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-6 flex items-center gap-2">
               <Tag size={14} /> Historial Reciente de Ventas
            </h3>
