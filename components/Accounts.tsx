@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { CheckCircle2, DollarSign, Calendar, User, Truck, MessageCircle, Wallet } from 'lucide-react';
 import { AppSettings, Sale, Purchase, CompanyInfo } from '../types';
 import { dbService } from '../db';
+import { parseNumber } from '../utils';
 import { TicketModal } from './TicketModal';
 
 interface Props {
@@ -99,7 +100,7 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate })
               <div className="space-y-4">
                  <div className="space-y-1">
                     <label className="text-[8px] font-black text-slate-500 uppercase ml-2">Monto USD</label>
-                    <input type="number" step="0.01" value={amountToPay} onChange={(e) => setAmountToPay(parseFloat(e.target.value) || 0)} className="w-full bg-[#0a0f1d] border border-slate-700 rounded-xl p-4 text-xl font-black text-white outline-none" autoFocus />
+                    <input type="number" step="0.01" value={amountToPay} onChange={(e) => setAmountToPay(parseNumber(e.target.value) || 0)} className="w-full bg-[#0a0f1d] border border-slate-700 rounded-xl p-4 text-xl font-black text-white outline-none" autoFocus />
                  </div>
                  <div className="flex gap-3 pt-4">
                    <button onClick={() => setPaymentModal(null)} className="flex-1 py-3 font-black text-slate-500 uppercase text-[9px]">Cancelar</button>

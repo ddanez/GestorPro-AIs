@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { Plus, Search, Tag, UserPlus, ShoppingCart, Trash2, X, CheckCircle2, MessageCircle, UserPlus2, PackageSearch, CreditCard, Loader2 } from 'lucide-react';
 import { Sale, Customer, Product, AppSettings, SaleItem, CompanyInfo, Seller } from '../types';
 import { dbService } from '../db';
+import { parseNumber } from '../utils';
 import { TicketModal } from './TicketModal';
 
 interface Props {
@@ -261,18 +262,18 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                              <div className="flex items-center gap-2">
                                 <span className="text-[8px] text-slate-500 font-bold uppercase">Cant:</span>
                                 <input 
-                                  type="number" step="any" 
+                                  type="number" step="any" lang="en-US" 
                                   value={item.quantity} 
-                                  onChange={(e) => updateQuantity(item.productId, parseFloat(e.target.value) || 0)} 
+                                  onChange={(e) => updateQuantity(item.productId, parseNumber(e.target.value) || 0)} 
                                   className="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[10px] font-black text-orange-500 outline-none"
                                 />
                              </div>
                              <div className="flex items-center gap-2 mt-1">
                                 <span className="text-[8px] text-slate-500 font-bold uppercase">Precio $:</span>
                                 <input 
-                                  type="number" step="0.01" 
+                                  type="number" step="0.01" lang="en-US" 
                                   value={item.priceUSD} 
-                                  onChange={(e) => updatePrice(item.productId, parseFloat(e.target.value) || 0)} 
+                                  onChange={(e) => updatePrice(item.productId, parseNumber(e.target.value) || 0)} 
                                   className="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[10px] font-black text-emerald-500 outline-none"
                                 />
                              </div>
@@ -303,7 +304,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                         </div>
                         {isDiscount && (
                            <div className="animate-in zoom-in-95">
-                              <input type="number" step="0.01" value={discountVal} onChange={(e) => setDiscountVal(parseFloat(e.target.value) || 0)} className="w-full bg-[#1e293b] border border-slate-700 rounded-xl p-2 text-xs font-black text-emerald-500 outline-none" placeholder="Monto $" />
+                              <input type="number" step="0.01" lang="en-US" value={discountVal} onChange={(e) => setDiscountVal(parseNumber(e.target.value) || 0)} className="w-full bg-[#1e293b] border border-slate-700 rounded-xl p-2 text-xs font-black text-emerald-500 outline-none" placeholder="Monto $" />
                               <p className="text-[9px] font-bold text-emerald-500 mt-1">{(discountVal * settings.exchangeRate).toLocaleString()} Bs</p>
                            </div>
                         )}
@@ -322,7 +323,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                         </div>
                         {isCredit && (
                            <div className="animate-in zoom-in-95">
-                              <input type="number" step="0.01" value={initialPayment} onChange={(e) => setInitialPayment(parseFloat(e.target.value) || 0)} className="w-full bg-[#1e293b] border border-slate-700 rounded-xl p-2 text-xs font-black text-white outline-none" placeholder="Abono $" />
+                              <input type="number" step="0.01" lang="en-US" value={initialPayment} onChange={(e) => setInitialPayment(parseNumber(e.target.value) || 0)} className="w-full bg-[#1e293b] border border-slate-700 rounded-xl p-2 text-xs font-black text-white outline-none" placeholder="Abono $" />
                               <p className="text-[9px] font-bold text-orange-500 mt-1">{(initialPayment * settings.exchangeRate).toLocaleString()} Bs</p>
                            </div>
                         )}

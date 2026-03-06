@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { Plus, Search, Edit2, Tag, Box, AlertTriangle, Layers } from 'lucide-react';
 import { Product, AppSettings } from '../types';
 import { dbService } from '../db';
+import { parseNumber } from '../utils';
 
 interface Props {
   products: Product[];
@@ -34,10 +35,10 @@ const Inventory: React.FC<Props> = ({ products, setProducts, settings }) => {
       name: formData.get('name') as string,
       sku: formData.get('sku') as string,
       category: formData.get('category') as string || 'Otros',
-      priceUSD: parseFloat(formData.get('priceUSD') as string) || 0,
-      costUSD: parseFloat(formData.get('costUSD') as string) || 0,
-      stock: parseFloat(formData.get('stock') as string) || 0,
-      minStock: parseFloat(formData.get('minStock') as string) || 0,
+      priceUSD: parseNumber(formData.get('priceUSD') as string) || 0,
+      costUSD: parseNumber(formData.get('costUSD') as string) || 0,
+      stock: parseNumber(formData.get('stock') as string) || 0,
+      minStock: parseNumber(formData.get('minStock') as string) || 0,
     };
     await dbService.put('products', newProduct);
     setProducts(prev => {
@@ -130,18 +131,18 @@ const Inventory: React.FC<Props> = ({ products, setProducts, settings }) => {
                 </div>
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-500 uppercase ml-2">PVP ($)</label>
-                  <input name="priceUSD" type="number" step="0.01" defaultValue={editingProduct?.priceUSD} className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-3 text-xs font-black text-emerald-400 outline-none focus:border-orange-500" required />
+                  <input name="priceUSD" type="number" step="0.01" lang="en-US" defaultValue={editingProduct?.priceUSD} className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-3 text-xs font-black text-emerald-400 outline-none focus:border-orange-500" required />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Existencia</label>
-                  <input name="stock" type="number" step="any" defaultValue={editingProduct?.stock || 0} className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-orange-500" required />
+                  <input name="stock" type="number" step="any" lang="en-US" defaultValue={editingProduct?.stock || 0} className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-orange-500" required />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Costo ($)</label>
-                  <input name="costUSD" type="number" step="0.01" defaultValue={editingProduct?.costUSD} className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-orange-500" required />
+                  <input name="costUSD" type="number" step="0.01" lang="en-US" defaultValue={editingProduct?.costUSD} className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-orange-500" required />
                 </div>
               </div>
 

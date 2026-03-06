@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { TrendingUp, Save, DollarSign } from 'lucide-react';
+import { parseNumber } from '../utils';
 
 interface Props {
   onSave: (rate: number) => void;
@@ -12,7 +13,7 @@ const ExchangeRateModal: React.FC<Props> = ({ onSave, currentRate }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const val = parseFloat(rate);
+    const val = parseNumber(rate);
     if (val > 0) onSave(val);
   };
 
@@ -39,6 +40,7 @@ const ExchangeRateModal: React.FC<Props> = ({ onSave, currentRate }) => {
                <input
                 type="number"
                 step="0.01"
+                lang="en-US"
                 value={rate}
                 onChange={(e) => setRate(e.target.value)}
                 placeholder="0.00"

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { parseNumber } from '../utils';
 import { 
   Building2, 
   Save, 
@@ -99,7 +100,7 @@ const Settings: React.FC<Props> = ({ company, setCompany, settings, setSettings,
     // Guardar tasa de cambio
     const newSettings = {
       ...settings,
-      exchangeRate: parseFloat(formData.get('exchangeRate') as string) || settings.exchangeRate
+      exchangeRate: parseNumber(formData.get('exchangeRate') as string) || settings.exchangeRate
     };
 
     setCompany(newCompany);
@@ -461,6 +462,7 @@ const Settings: React.FC<Props> = ({ company, setCompany, settings, setSettings,
                      name="exchangeRate" 
                      type="number" 
                      step="0.01" 
+                     lang="en-US"
                      defaultValue={settings.exchangeRate} 
                      className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 text-2xl font-black text-orange-500 outline-none focus:border-orange-500/50" 
                    />

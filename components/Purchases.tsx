@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { Plus, ShoppingCart, Truck, Search, Trash2, ArrowLeft, CheckCircle2, PlusCircle, Edit3, Loader2, UserPlus, Box, X, CreditCard, Tag, Calculator } from 'lucide-react';
 import { Purchase, Supplier, Product, AppSettings, PurchaseItem } from '../types';
 import { dbService } from '../db';
+import { parseNumber } from '../utils';
 
 interface ExtendedPurchaseItem extends PurchaseItem {
   newSalePriceUSD: number;
@@ -259,15 +260,15 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
                       <div className="grid grid-cols-4 items-end gap-2 px-1">
                         <div className="space-y-1">
                           <label className="text-[7px] font-black text-slate-500 uppercase block text-center">Cant.</label>
-                          <input type="number" step="any" value={item.quantity} onChange={(e) => updateCartItem(item.productId, 'quantity', parseFloat(e.target.value) || 0)} className="w-full bg-[#0f172a] border border-slate-700 rounded-lg p-2 text-center text-[10px] font-black text-orange-500 outline-none"/>
+                          <input type="number" step="any" lang="en-US" value={item.quantity} onChange={(e) => updateCartItem(item.productId, 'quantity', parseNumber(e.target.value) || 0)} className="w-full bg-[#0f172a] border border-slate-700 rounded-lg p-2 text-center text-[10px] font-black text-orange-500 outline-none"/>
                         </div>
                         <div className="space-y-1">
                           <label className="text-[7px] font-black text-slate-500 uppercase block text-center">Costo $</label>
-                          <input type="number" step="0.01" value={item.costUSD} onChange={(e) => updateCartItem(item.productId, 'costUSD', parseFloat(e.target.value) || 0)} className="w-full bg-[#0f172a] border border-slate-700 rounded-lg p-2 text-center text-[10px] font-black text-white outline-none"/>
+                          <input type="number" step="0.01" lang="en-US" value={item.costUSD} onChange={(e) => updateCartItem(item.productId, 'costUSD', parseNumber(e.target.value) || 0)} className="w-full bg-[#0f172a] border border-slate-700 rounded-lg p-2 text-center text-[10px] font-black text-white outline-none"/>
                         </div>
                         <div className="space-y-1">
                           <label className="text-[7px] font-black text-slate-500 uppercase block text-center">PVP $</label>
-                          <input type="number" step="0.01" value={item.newSalePriceUSD} onChange={(e) => updateCartItem(item.productId, 'newSalePriceUSD', parseFloat(e.target.value) || 0)} className="w-full bg-[#0f172a] border border-slate-700 rounded-lg p-2 text-center text-[10px] font-black text-emerald-500 outline-none"/>
+                          <input type="number" step="0.01" lang="en-US" value={item.newSalePriceUSD} onChange={(e) => updateCartItem(item.productId, 'newSalePriceUSD', parseNumber(e.target.value) || 0)} className="w-full bg-[#0f172a] border border-slate-700 rounded-lg p-2 text-center text-[10px] font-black text-emerald-500 outline-none"/>
                         </div>
                         <div className="space-y-1 flex flex-col items-center">
                           <label className="text-[7px] font-black text-slate-500 uppercase block text-center">Subtotal $</label>
@@ -302,7 +303,7 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
                       {isDiscount && (
                          <div className="animate-in zoom-in-95 mt-3">
                             <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Monto Descuento ($)</label>
-                            <input type="number" value={discountVal} onChange={(e) => setDiscountVal(parseFloat(e.target.value) || 0)} className="w-full bg-[#1e293b] border border-slate-700 rounded-xl p-3 text-sm font-black text-emerald-500 outline-none" />
+                            <input type="number" lang="en-US" value={discountVal} onChange={(e) => setDiscountVal(parseNumber(e.target.value) || 0)} className="w-full bg-[#1e293b] border border-slate-700 rounded-xl p-3 text-sm font-black text-emerald-500 outline-none" />
                             <p className="text-[9px] font-bold text-emerald-500 mt-1">{(discountVal * settings.exchangeRate).toLocaleString()} Bs</p>
                          </div>
                       )}
@@ -322,7 +323,7 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
                       {isCredit && (
                          <div className="animate-in zoom-in-95 mt-3">
                             <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Abono Inicial ($)</label>
-                            <input type="number" value={initialPayment} onChange={(e) => setInitialPayment(parseFloat(e.target.value) || 0)} className="w-full bg-[#1e293b] border border-slate-700 rounded-xl p-3 text-sm font-black text-white outline-none" />
+                            <input type="number" lang="en-US" value={initialPayment} onChange={(e) => setInitialPayment(parseNumber(e.target.value) || 0)} className="w-full bg-[#1e293b] border border-slate-700 rounded-xl p-3 text-sm font-black text-white outline-none" />
                             <p className="text-[9px] font-bold text-orange-500 mt-1">{(initialPayment * settings.exchangeRate).toLocaleString()} Bs</p>
                          </div>
                       )}
@@ -400,8 +401,8 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
                  name: formData.get('name') as string,
                  sku: formData.get('sku') as string,
                  category: formData.get('category') as string,
-                 costUSD: parseFloat(formData.get('costUSD') as string) || 0,
-                 priceUSD: parseFloat(formData.get('priceUSD') as string) || 0,
+                 costUSD: parseNumber(formData.get('costUSD') as string) || 0,
+                 priceUSD: parseNumber(formData.get('priceUSD') as string) || 0,
                  stock: 0,
                  minStock: 5
                };
@@ -416,8 +417,8 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
                   {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                </select>
                <div className="grid grid-cols-2 gap-3">
-                  <input name="costUSD" type="number" step="0.01" placeholder="Costo $" className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-4 text-xs font-black text-white outline-none" required />
-                  <input name="priceUSD" type="number" step="0.01" placeholder="PVP $" className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-4 text-xs font-black text-emerald-400 outline-none" required />
+                  <input name="costUSD" type="number" step="0.01" lang="en-US" placeholder="Costo $" className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-4 text-xs font-black text-white outline-none" required />
+                  <input name="priceUSD" type="number" step="0.01" lang="en-US" placeholder="PVP $" className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-4 text-xs font-black text-emerald-400 outline-none" required />
                </div>
                <div className="flex gap-3 pt-2">
                  <button type="button" onClick={() => setIsProductModalOpen(false)} className="flex-1 text-slate-500 font-black uppercase text-[10px]">Cerrar</button>

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Wallet, Plus, Trash2, Calendar, Tag, DollarSign, Search } from 'lucide-react';
 import { Expense, AppSettings } from '../types';
 import { dbService } from '../db';
+import { parseNumber } from '../utils';
 
 interface Props {
   expenses: Expense[];
@@ -174,9 +175,10 @@ const Expenses: React.FC<Props> = ({ expenses, setExpenses, settings }) => {
                     <input 
                       type="number" 
                       step="0.01"
+                      lang="en-US"
                       className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 pl-10 text-white outline-none focus:border-rose-500 transition-colors"
                       value={newExpense.amountUSD || ''}
-                      onChange={(e) => setNewExpense({...newExpense, amountUSD: parseFloat(e.target.value) || 0})}
+                      onChange={(e) => setNewExpense({...newExpense, amountUSD: parseNumber(e.target.value) || 0})}
                     />
                   </div>
                 </div>
