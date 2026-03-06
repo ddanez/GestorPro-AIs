@@ -26,12 +26,17 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
     const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
     
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos de timeout
+
     try {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
 
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.indexOf("application/json") !== -1) {
@@ -56,7 +61,11 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         throw new Error(`Error del servidor (${response.status}). Verifique su conexión o intente de nuevo.`);
       }
     } catch (err: any) {
-      setError(err.message);
+      if (err.name === 'AbortError') {
+        setError('El servidor está tardando demasiado en responder. Intente de nuevo.');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setIsLoading(false);
     }

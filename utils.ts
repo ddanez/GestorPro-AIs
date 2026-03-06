@@ -9,3 +9,10 @@ export const parseNumber = (value: any): number => {
   
   return isNaN(parsed) ? 0 : parsed;
 };
+
+export const searchMatch = (text: string, query: string): boolean => {
+  if (!query) return true;
+  const keywords = query.toLowerCase().split(' ').filter(k => k.length > 0);
+  const target = text.toLowerCase();
+  return keywords.every(k => target.includes(k));
+};

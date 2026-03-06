@@ -1,14 +1,25 @@
 // db.ts - Implementación con Backend API y Fallback a IndexedDB
 const DB_NAME = 'GestorProDB';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORES = ['products', 'customers', 'suppliers', 'sales', 'purchases', 'settings', 'sellers', 'payments', 'authenticators', 'expenses'];
 
 export class DBService {
   private db: IDBDatabase | null = null;
   private token: string | null = null;
+  private onSessionExpired: (() => void) | null = null;
 
   setToken(token: string | null) {
     this.token = token;
+  }
+
+  setOnSessionExpired(callback: () => void) {
+    this.onSessionExpired = callback;
+  }
+
+  private handleSessionExpired() {
+    if (this.onSessionExpired) {
+      this.onSessionExpired();
+    }
   }
 
   private getHeaders() {
@@ -58,6 +69,10 @@ export class DBService {
     if (this.token) {
       try {
         const response = await fetch(`/api/${storeName}`, { headers: this.getHeaders() });
+        if (response.status === 401 || response.status === 403) {
+          this.handleSessionExpired();
+          throw new Error("SESSION_EXPIRED");
+        }
         if (response.ok) {
           const contentType = response.headers.get("content-type");
           if (contentType && contentType.indexOf("application/json") !== -1) {
@@ -101,6 +116,7 @@ export class DBService {
         });
         
         if (response.status === 401 || response.status === 403) {
+          this.handleSessionExpired();
           throw new Error("SESSION_EXPIRED");
         }
       } catch (err: any) {
@@ -122,11 +138,16 @@ export class DBService {
     // Intentar eliminar en el backend
     if (this.token) {
       try {
-        await fetch(`/api/${storeName}/${id}`, {
+        const response = await fetch(`/api/${storeName}/${id}`, {
           method: 'DELETE',
           headers: this.getHeaders()
         });
-      } catch (err) {
+        if (response.status === 401 || response.status === 403) {
+          this.handleSessionExpired();
+          throw new Error("SESSION_EXPIRED");
+        }
+      } catch (err: any) {
+        if (err.message === "SESSION_EXPIRED") throw err;
         console.warn(`Error al eliminar ${storeName} en el backend:`, err);
       }
     }

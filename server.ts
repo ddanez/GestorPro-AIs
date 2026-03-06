@@ -109,17 +109,32 @@ const authenticateToken = (req: any, res: any, next: any) => {
 
 app.post('/api/auth/login', (req: any, res: any) => {
   const { username, password } = req.body;
+  console.log(`🔑 Intento de login para usuario: ${username}`);
+  
   if (!username || !password) {
     return res.status(400).json({ message: 'Usuario y contraseña requeridos' });
   }
 
   db.get("SELECT * FROM users WHERE username = ?", [username], (err, user: any) => {
-    if (err) return res.status(500).json({ message: err.message });
-    if (!user) return res.status(401).json({ message: 'Usuario no encontrado' });
+    if (err) {
+      console.error(`❌ Error DB en login: ${err.message}`);
+      return res.status(500).json({ message: err.message });
+    }
+    
+    if (!user) {
+      console.warn(`⚠️ Usuario no encontrado: ${username}`);
+      return res.status(401).json({ message: 'Usuario no encontrado' });
+    }
 
+    console.log(`✅ Usuario encontrado, verificando contraseña...`);
     const isPasswordValid = bcrypt.compareSync(password, user.password);
-    if (!isPasswordValid) return res.status(401).json({ message: 'Contraseña incorrecta' });
+    
+    if (!isPasswordValid) {
+      console.warn(`❌ Contraseña incorrecta para: ${username}`);
+      return res.status(401).json({ message: 'Contraseña incorrecta' });
+    }
 
+    console.log(`🎉 Login exitoso para: ${username}`);
     const token = jwt.sign({ id: user.id, username: user.username, role: user.role, name: user.name }, JWT_SECRET, { expiresIn: '24h' });
     res.json({ 
       token, 

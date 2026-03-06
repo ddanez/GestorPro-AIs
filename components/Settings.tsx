@@ -111,12 +111,7 @@ const Settings: React.FC<Props> = ({ company, setCompany, settings, setSettings,
       await dbService.put('settings', { ...newSettings, id: 'app_settings' });
       alert('Configuración guardada correctamente.');
     } catch (err: any) {
-      if (err.message === "SESSION_EXPIRED") {
-        alert("Su sesión ha expirado. Por favor, inicie sesión de nuevo.");
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user_data');
-        window.location.reload();
-      } else {
+      if (err.message !== "SESSION_EXPIRED") {
         alert('Configuración guardada localmente. Error al sincronizar con el servidor.');
       }
     }

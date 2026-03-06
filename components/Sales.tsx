@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { Plus, Search, Tag, UserPlus, ShoppingCart, Trash2, X, CheckCircle2, MessageCircle, UserPlus2, PackageSearch, CreditCard, Loader2 } from 'lucide-react';
 import { Sale, Customer, Product, AppSettings, SaleItem, CompanyInfo, Seller } from '../types';
 import { dbService } from '../db';
-import { parseNumber } from '../utils';
+import { parseNumber, searchMatch } from '../utils';
 import { TicketModal } from './TicketModal';
 
 interface Props {
@@ -139,7 +139,8 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
-      const matchesSearch = (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (p.sku || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const combined = `${p.name} ${p.sku || ''}`.toLowerCase();
+      const matchesSearch = searchMatch(combined, searchTerm);
       const matchesCategory = selectedCategory === 'Todos' || p.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
@@ -236,14 +237,21 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                         const val = e.target.value;
                         setPosProductSearch(val);
                         if (val.length >= 3) {
-                           const p = products.find(x => (x.name || '').toLowerCase() === val.toLowerCase() || (x.sku || '') === val);
-                           if (p) addToCart(p);
+                           // Buscar coincidencia exacta por SKU o nombre completo
+                           const p = products.find(x => 
+                             (x.sku && x.sku.toLowerCase() === val.toLowerCase()) || 
+                             (x.name && x.name.toLowerCase() === val.toLowerCase())
+                           );
+                           if (p) {
+                             addToCart(p);
+                             setPosProductSearch(''); // Limpiar después de agregar
+                           }
                         }
                       }}
                       list="pos-datalist"
                      />
                      <datalist id="pos-datalist">
-                        {products.filter(p => (p.name || '').toLowerCase().includes(posProductSearch.toLowerCase()) || (p.sku || '').includes(posProductSearch)).map(p => (
+                        {products.filter(p => searchMatch(`${p.name} ${p.sku || ''}`, posProductSearch)).slice(0, 10).map(p => (
                            <option key={p.id} value={p.name}>{p.sku}</option>
                         ))}
                      </datalist>

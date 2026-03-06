@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { Plus, Search, Edit2, Tag, Box, AlertTriangle, Layers } from 'lucide-react';
 import { Product, AppSettings } from '../types';
 import { dbService } from '../db';
-import { parseNumber } from '../utils';
+import { parseNumber, searchMatch } from '../utils';
 
 interface Props {
   products: Product[];
@@ -20,11 +20,10 @@ const Inventory: React.FC<Props> = ({ products, setProducts, settings }) => {
 
   // Optimización: Memoizar filtrado para evitar lag
   const filteredProducts = useMemo(() => {
-    return products.filter(p => 
-      (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
-      (p.sku || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.category || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    return products.filter(p => {
+      const combined = `${p.name} ${p.sku || ''} ${p.category || ''}`.toLowerCase();
+      return searchMatch(combined, searchTerm);
+    });
   }, [products, searchTerm]);
 
   const saveProduct = async (e: React.FormEvent<HTMLFormElement>) => {

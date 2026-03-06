@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { Plus, ShoppingCart, Truck, Search, Trash2, ArrowLeft, CheckCircle2, PlusCircle, Edit3, Loader2, UserPlus, Box, X, CreditCard, Tag, Calculator } from 'lucide-react';
 import { Purchase, Supplier, Product, AppSettings, PurchaseItem } from '../types';
 import { dbService } from '../db';
-import { parseNumber } from '../utils';
+import { parseNumber, searchMatch } from '../utils';
 
 interface ExtendedPurchaseItem extends PurchaseItem {
   newSalePriceUSD: number;
@@ -232,12 +232,19 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
                           const val = e.target.value;
                           setProductSearch(val);
                           if (val.length >= 3) {
-                             const f = products.find(x => (x.name || '').toLowerCase() === val.toLowerCase() || (x.sku || '') === val);
-                             if (f) addToCart(f);
+                             // Buscar coincidencia exacta por SKU o nombre completo
+                             const f = products.find(x => 
+                               (x.sku && x.sku.toLowerCase() === val.toLowerCase()) || 
+                               (x.name && x.name.toLowerCase() === val.toLowerCase())
+                             );
+                             if (f) {
+                               addToCart(f);
+                               setProductSearch(''); // Limpiar después de agregar
+                             }
                           }
                        }} list="purch-datalist" />
                        <datalist id="purch-datalist">
-                          {products.filter(p => (p.name || '').toLowerCase().includes(productSearch.toLowerCase()) || (p.sku || '').includes(productSearch)).map(p => (
+                          {products.filter(p => searchMatch(`${p.name} ${p.sku || ''}`, productSearch)).slice(0, 10).map(p => (
                              <option key={p.id} value={p.name}>{p.sku}</option>
                           ))}
                        </datalist>

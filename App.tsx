@@ -109,6 +109,14 @@ const App: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
+    dbService.setOnSessionExpired(() => {
+      alert("Su sesión ha expirado. Por favor, inicie sesión de nuevo.");
+      handleLogout();
+      window.location.reload();
+    });
+  }, []);
+
+  useEffect(() => {
     const savedUser = localStorage.getItem('user_data');
     const savedToken = localStorage.getItem('auth_token');
     if (savedUser && savedToken) {
