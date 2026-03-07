@@ -30,6 +30,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [ticketData, setTicketData] = useState<Sale | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<'catalog' | 'cart'>('catalog');
 
   // Estados para condiciones comerciales
   const [isCredit, setIsCredit] = useState(false);
@@ -185,9 +186,30 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
              <button onClick={() => setIsModalOpen(false)} className="p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"><X size={24}/></button>
           </div>
 
-          <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+          <div className="flex-1 overflow-hidden flex flex-col md:flex-row relative">
+            {/* Tabs para Móvil */}
+            <div className="md:hidden flex bg-[#1e293b] border-b border-slate-700 p-1">
+               <button 
+                onClick={() => setActiveTab('catalog')} 
+                className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'catalog' ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-500'}`}
+               >
+                 Productos
+               </button>
+               <button 
+                onClick={() => setActiveTab('cart')} 
+                className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all relative ${activeTab === 'cart' ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-500'}`}
+               >
+                 Carrito
+                 {cart.length > 0 && (
+                   <span className="absolute top-2 right-4 bg-white text-orange-500 text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                     {cart.length}
+                   </span>
+                 )}
+               </button>
+            </div>
+
             {/* Catálogo */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-[#0f172a]">
+            <div className={`flex-1 p-4 overflow-y-auto space-y-4 bg-[#0f172a] ${activeTab === 'catalog' ? 'flex flex-col' : 'hidden md:flex md:flex-col'}`}>
                <div className="flex flex-col md:flex-row gap-3">
                  <select className="bg-[#1e293b] border border-slate-700 rounded-xl p-3 text-xs font-bold text-white outline-none" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
                     {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -199,7 +221,12 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                </div>
 
                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {filteredProducts.map(p => (
+                  {filteredProducts.length === 0 ? (
+                    <div className="col-span-full py-20 text-center space-y-3 opacity-30">
+                       <PackageSearch size={48} className="mx-auto text-slate-500" />
+                       <p className="text-xs font-black uppercase tracking-widest">No hay productos</p>
+                    </div>
+                  ) : filteredProducts.map(p => (
                     <button key={p.id} onClick={() => addToCart(p)} disabled={(p.stock || 0) <= 0} className={`p-4 bg-[#1e293b] border border-slate-700 rounded-2xl text-left hover:border-orange-500 transition-all ${(p.stock || 0) <= 0 ? 'opacity-40 grayscale' : 'hover:scale-[1.02]'}`}>
                        <p className="font-black text-[10px] text-white line-clamp-2 h-7 mb-1 leading-tight uppercase">{p.name}</p>
                        <div className="flex flex-col items-start">
@@ -213,7 +240,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
             </div>
 
             {/* Carrito y Cobro */}
-            <div className="w-full md:w-96 bg-[#1e293b] border-l border-slate-700 p-6 flex flex-col shadow-2xl overflow-y-auto max-h-screen">
+            <div className={`w-full md:w-96 bg-[#1e293b] border-l border-slate-700 p-6 shadow-2xl overflow-y-auto ${activeTab === 'cart' ? 'flex flex-col' : 'hidden md:flex md:flex-col'}`}>
                <div className="space-y-4 mb-6 shrink-0">
                   <div className="space-y-1">
                     <label className="text-[8px] font-black text-slate-500 uppercase ml-1 tracking-widest">Cliente</label>
@@ -256,6 +283,9 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                         ))}
                      </datalist>
                   </div>
+                  {posProductSearch.length >= 2 && products.filter(p => searchMatch(`${p.name} ${p.sku || ''}`, posProductSearch)).length === 0 && (
+                    <p className="text-[10px] font-bold text-rose-400 mt-2 uppercase animate-pulse">Producto no encontrado</p>
+                  )}
                </div>
 
                {/* Items del Carrito */}

@@ -251,6 +251,9 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
                     </div>
                     <button onClick={() => setIsProductModalOpen(true)} className="p-3 bg-emerald-500 text-white rounded-xl"><PlusCircle size={18} /></button>
                  </div>
+                 {productSearch.length >= 2 && products.filter(p => searchMatch(`${p.name} ${p.sku || ''}`, productSearch)).length === 0 && (
+                   <p className="text-[10px] font-bold text-rose-400 mt-2 uppercase animate-pulse">Producto no encontrado</p>
+                 )}
               </div>
            </div>
 
