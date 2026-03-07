@@ -2,7 +2,20 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 // Use process.env.GEMINI_API_KEY as per guidelines
-const apiKey = (process.env as any).GEMINI_API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY || "";
+// We use a direct reference so the build system can replace it
+const getApiKey = () => {
+  try {
+    // Intentar obtener de process.env (inyectado por Vite o el shim en index.html)
+    const key = (window as any).process?.env?.GEMINI_API_KEY || 
+                (import.meta as any).env.VITE_GEMINI_API_KEY || 
+                (process?.env?.GEMINI_API_KEY) || "";
+    return key;
+  } catch (e) {
+    return (import.meta as any).env.VITE_GEMINI_API_KEY || "";
+  }
+};
+
+const apiKey = getApiKey();
 const ai = new GoogleGenAI({ apiKey });
 
 export const analyzeFinancialData = async (data: any) => {

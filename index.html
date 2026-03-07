@@ -25,6 +25,10 @@
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #64748b; }
     </style>
+    <script>
+      // Definición global de process para evitar errores en navegadores móviles
+      window.process = { env: { NODE_ENV: 'development' } };
+    </script>
     <!-- Eruda: Consola para depuración en móvil -->
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <script>eruda.init();</script>
