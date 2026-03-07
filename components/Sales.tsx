@@ -236,7 +236,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                       onChange={(e) => {
                         const val = e.target.value;
                         setPosProductSearch(val);
-                        if (val.length >= 3) {
+                        if (val.length >= 2) {
                            // Buscar coincidencia exacta por SKU o nombre completo
                            const p = products.find(x => 
                              (x.sku && x.sku.toLowerCase() === val.toLowerCase()) || 

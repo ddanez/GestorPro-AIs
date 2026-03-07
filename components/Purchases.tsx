@@ -219,7 +219,7 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
                  </div>
               </div>
               <div className="space-y-1">
-                 <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-widest">Producto (Mín. 3 caracteres)</label>
+                 <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-widest">Producto (Mín. 2 caracteres)</label>
                  <div className="flex gap-2 items-center">
                     <div className="relative flex-1">
                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
@@ -231,7 +231,7 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
                         onChange={(e) => {
                           const val = e.target.value;
                           setProductSearch(val);
-                          if (val.length >= 3) {
+                          if (val.length >= 2) {
                              // Buscar coincidencia exacta por SKU o nombre completo
                              const f = products.find(x => 
                                (x.sku && x.sku.toLowerCase() === val.toLowerCase()) || 
