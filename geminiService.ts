@@ -3,10 +3,17 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 // Use process.env.GEMINI_API_KEY as per guidelines
 // The platform will inject this value automatically
-const apiKey = process.env.GEMINI_API_KEY || "";
-const ai = new GoogleGenAI({ apiKey });
-
 export const analyzeFinancialData = async (data: any) => {
+  // Use process.env.GEMINI_API_KEY as per guidelines
+  // The platform will inject this value automatically
+  const apiKey = (process.env as any).VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || (process.env as any).API_KEY || "";
+  
+  if (!apiKey) {
+    console.error("❌ Gemini API Key is missing.");
+    return "Error: No se ha detectado la llave de API de Gemini. Por favor, asegúrate de que esté configurada en el entorno o usa el botón de configuración.";
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   // Use a more stable model version
   const model = "gemini-3-flash-preview";
   
@@ -28,11 +35,6 @@ export const analyzeFinancialData = async (data: any) => {
     Usa emojis para resaltar puntos clave.
     Menciona específicamente la "Utilidad Neta" (Ingresos - Compras - Gastos).
   `;
-
-  if (!apiKey) {
-    console.error("❌ Gemini API Key is missing. Please set GEMINI_API_KEY in environment variables.");
-    return "Error: No se ha configurado la llave de API de Gemini. Por favor, contacta al administrador.";
-  }
 
   try {
     console.log(`🤖 Iniciando análisis con Gemini (${model})...`);

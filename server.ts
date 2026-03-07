@@ -282,6 +282,7 @@ async function startServer() {
     console.log(`\n🚀 SERVIDOR GESTORPRO INICIADO`);
     console.log(`🌐 API disponible en: http://localhost:${PORT}/api`);
     console.log(`📡 Escuchando en todas las interfaces de red.`);
+    console.log(`🔑 Gemini API Key presente: ${process.env.GEMINI_API_KEY ? 'SÍ' : 'NO'}`);
   });
 }
 

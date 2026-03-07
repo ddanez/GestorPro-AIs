@@ -66,12 +66,31 @@ const AIAnalysis: React.FC<Props> = ({ sales, purchases, expenses, products }) =
             <Markdown>{analysis}</Markdown>
           </div>
           
-          <button 
-            onClick={() => setAnalysis(null)}
-            className="text-xs text-slate-500 hover:text-slate-300 underline"
-          >
-            Nuevo análisis
-          </button>
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setAnalysis(null)}
+              className="text-xs text-slate-500 hover:text-slate-300 underline"
+            >
+              Nuevo análisis
+            </button>
+            
+            {analysis.includes("No se ha detectado la llave") && (
+              <button 
+                onClick={async () => {
+                  if (window.aistudio?.openSelectKey) {
+                    await window.aistudio.openSelectKey();
+                    // Optional: reload or retry
+                    window.location.reload();
+                  } else {
+                    alert("La herramienta de configuración de llaves no está disponible en este navegador.");
+                  }
+                }}
+                className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold py-1 px-3 rounded-full transition-all"
+              >
+                Configurar Llave Manualmente
+              </button>
+            )}
+          </div>
         </div>
       )}
 

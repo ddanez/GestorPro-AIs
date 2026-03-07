@@ -27,11 +27,15 @@
     </style>
     <script>
       // Definición segura de process para evitar errores en navegadores móviles
-      // sin sobrescribir las variables inyectadas por el compilador (Vite)
+      // sin interferir con las variables inyectadas por el compilador (Vite)
       if (typeof window.process === 'undefined') {
-        window.process = { env: { NODE_ENV: 'development' } };
-      } else if (typeof window.process.env === 'undefined') {
-        window.process.env = { NODE_ENV: 'development' };
+        window.process = { env: {} };
+      }
+      if (typeof window.process.env === 'undefined') {
+        window.process.env = {};
+      }
+      if (typeof window.process.env.NODE_ENV === 'undefined') {
+        window.process.env.NODE_ENV = 'development';
       }
     </script>
     <!-- Eruda: Consola para depuración en móvil -->

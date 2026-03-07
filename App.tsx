@@ -7,6 +7,15 @@ import {
 import { AppTab, CompanyInfo, AppSettings, Product, Customer, Supplier, Sale, Purchase, Seller, User } from './types';
 import { dbService } from './db';
 
+declare global {
+  interface Window {
+    aistudio?: {
+      hasSelectedApiKey: () => Promise<boolean>;
+      openSelectKey: () => Promise<void>;
+    };
+  }
+}
+
 import Dashboard from './components/Dashboard';
 import Inventory from './components/Inventory';
 import Sales from './components/Sales';
