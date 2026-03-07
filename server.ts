@@ -291,20 +291,50 @@ app.post('/api/gemini/analyze', authenticateToken, async (req: any, res: any) =>
 
   try {
     const ai = new GoogleGenAI({ apiKey });
-    const model = ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `${prompt}\n\nDATOS PARA ANALIZAR:\n${JSON.stringify(data || {}, null, 2)}`,
-      config: {
-        temperature: 0.7,
-        topP: 0.95,
-        topK: 64,
-      }
-    });
+    
+    // Implementación de reintentos para manejar errores 503 (Alta demanda)
+    let response;
+    let attempts = 0;
+    const maxAttempts = 3;
+    const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-    const response = await model;
+    while (attempts < maxAttempts) {
+      try {
+        const model = ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: `${prompt}\n\nDATOS PARA ANALIZAR:\n${JSON.stringify(data || {}, null, 2)}`,
+          config: {
+            temperature: 0.7,
+            topP: 0.95,
+            topK: 64,
+          }
+        });
+        response = await model;
+        break; // Éxito, salir del bucle
+      } catch (error: any) {
+        attempts++;
+        // Si es un error 503 y tenemos intentos restantes, esperamos y reintentamos
+        if (error.status === 503 && attempts < maxAttempts) {
+          console.warn(`⚠️ Gemini está saturado (Intento ${attempts}/${maxAttempts}). Reintentando en ${attempts * 2}s...`);
+          await delay(attempts * 2000); // Espera exponencial: 2s, 4s
+          continue;
+        }
+        throw error; // Si no es 503 o no hay más intentos, lanzamos el error
+      }
+    }
+
+    if (!response) throw new Error('No se recibió respuesta de Gemini');
     res.json({ text: response.text });
   } catch (error: any) {
     console.error('❌ Error en análisis de Gemini:', error);
+    
+    // Mensaje amigable para saturación del servicio
+    if (error.status === 503 || (error.message && error.message.includes("high demand"))) {
+      return res.status(503).json({ 
+        message: 'El servicio de Inteligencia Artificial está experimentando una alta demanda en este momento. Por favor, espera unos segundos e intenta de nuevo.' 
+      });
+    }
+
     res.status(500).json({ 
       message: 'Error al procesar el análisis con la IA: ' + (error.message || 'Error desconocido')
     });

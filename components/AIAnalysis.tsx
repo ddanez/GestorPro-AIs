@@ -79,6 +79,20 @@ const AIAnalysis: React.FC<Props> = ({ sales, purchases, expenses, products }) =
                 ⚠️ VE A LA PESTAÑA DE "AJUSTES" PARA CONFIGURAR TU LLAVE.
               </p>
             )}
+
+            {analysis.includes("alta demanda") && (
+              <div className="flex flex-col gap-2">
+                <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">
+                  ⚠️ EL SERVICIO ESTÁ SATURADO TEMPORALMENTE.
+                </p>
+                <button 
+                  onClick={handleAnalyze}
+                  className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold py-1 px-3 rounded-full transition-all w-fit"
+                >
+                  Reintentar ahora
+                </button>
+              </div>
+            )}
             
             {analysis.includes("No se ha detectado la llave") && (
               <button 
