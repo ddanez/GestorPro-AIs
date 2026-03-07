@@ -26,8 +26,10 @@
         ::-webkit-scrollbar-thumb:hover { background: #64748b; }
     </style>
     <script>
-      // Definición global de process para evitar errores en navegadores móviles
-      window.process = { env: { NODE_ENV: 'development' } };
+      // Definición segura de process para evitar errores en navegadores móviles
+      // sin sobrescribir las variables inyectadas por la plataforma
+      window.process = window.process || {};
+      window.process.env = window.process.env || { NODE_ENV: 'development' };
     </script>
     <!-- Eruda: Consola para depuración en móvil -->
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
