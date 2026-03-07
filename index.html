@@ -27,9 +27,12 @@
     </style>
     <script>
       // Definición segura de process para evitar errores en navegadores móviles
-      // sin sobrescribir las variables inyectadas por la plataforma
-      window.process = window.process || {};
-      window.process.env = window.process.env || { NODE_ENV: 'development' };
+      // sin sobrescribir las variables inyectadas por el compilador (Vite)
+      if (typeof window.process === 'undefined') {
+        window.process = { env: { NODE_ENV: 'development' } };
+      } else if (typeof window.process.env === 'undefined') {
+        window.process.env = { NODE_ENV: 'development' };
+      }
     </script>
     <!-- Eruda: Consola para depuración en móvil -->
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
