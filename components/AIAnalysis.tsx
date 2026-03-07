@@ -77,12 +77,21 @@ const AIAnalysis: React.FC<Props> = ({ sales, purchases, expenses, products }) =
             {analysis.includes("No se ha detectado la llave") && (
               <button 
                 onClick={async () => {
-                  if (window.aistudio?.openSelectKey) {
-                    await window.aistudio.openSelectKey();
-                    // Optional: reload or retry
-                    window.location.reload();
+                  // Try to find aistudio in window or parent (for mobile/iframe issues)
+                  const aiStudio = (window as any).aistudio || (window.parent as any)?.aistudio;
+                  
+                  if (aiStudio && typeof aiStudio.openSelectKey === 'function') {
+                    try {
+                      await aiStudio.openSelectKey();
+                      // After opening, we assume success as per guidelines and reload
+                      setTimeout(() => window.location.reload(), 1000);
+                    } catch (e) {
+                      console.error("Error calling openSelectKey:", e);
+                      alert("Error al abrir el configurador de llaves.");
+                    }
                   } else {
-                    alert("La herramienta de configuración de llaves no está disponible en este navegador.");
+                    console.error("AI Studio API not found in window.aistudio or parent.aistudio");
+                    alert("La herramienta de configuración no se detectó automáticamente. Por favor, asegúrate de estar usando el entorno de AI Studio o intenta recargar la página.");
                   }
                 }}
                 className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold py-1 px-3 rounded-full transition-all"

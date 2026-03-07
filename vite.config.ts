@@ -8,7 +8,9 @@ console.log(`[Vite Config] GEMINI_API_KEY detectada: ${process.env.VITE_GEMINI_A
 export default defineConfig({
   plugins: [react()],
   define: {
-    'process.env.GEMINI_API_KEY': JSON.stringify(process.env.VITE_GEMINI_API_KEY)
+    'process.env.GEMINI_API_KEY': JSON.stringify(process.env.VITE_GEMINI_API_KEY),
+    'process.env.API_KEY': JSON.stringify(process.env.VITE_GEMINI_API_KEY),
+    'process.env.VITE_GEMINI_API_KEY': JSON.stringify(process.env.VITE_GEMINI_API_KEY),
   },
   server: {
     port: 3000,

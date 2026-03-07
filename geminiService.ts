@@ -4,13 +4,37 @@ import { GoogleGenAI, Type } from "@google/genai";
 // Use process.env.GEMINI_API_KEY as per guidelines
 // The platform will inject this value automatically
 export const analyzeFinancialData = async (data: any) => {
-  // Use process.env.GEMINI_API_KEY as per guidelines
-  // The platform will inject this value automatically
-  const apiKey = (process.env as any).VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || (process.env as any).API_KEY || "";
+  // Robust key detection for different environments
+  const getApiKey = () => {
+    try {
+      // Try process.env (Vite define)
+      if (typeof process !== 'undefined' && process.env) {
+        if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY;
+        if ((process.env as any).API_KEY) return (process.env as any).API_KEY;
+        if ((process.env as any).VITE_GEMINI_API_KEY) return (process.env as any).VITE_GEMINI_API_KEY;
+      }
+      
+      // Try import.meta.env
+      if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
+        if ((import.meta as any).env.VITE_GEMINI_API_KEY) return (import.meta as any).env.VITE_GEMINI_API_KEY;
+      }
+
+      // Try global window/globalThis
+      const g = (globalThis as any);
+      if (g.process?.env?.GEMINI_API_KEY) return g.process.env.GEMINI_API_KEY;
+      if (g.API_KEY) return g.API_KEY;
+      
+    } catch (e) {
+      console.warn("Error accessing environment variables:", e);
+    }
+    return "";
+  };
+
+  const apiKey = getApiKey();
   
   if (!apiKey) {
-    console.error("❌ Gemini API Key is missing.");
-    return "Error: No se ha detectado la llave de API de Gemini. Por favor, asegúrate de que esté configurada en el entorno o usa el botón de configuración.";
+    console.error("❌ Gemini API Key is missing. Sources checked: process.env, import.meta.env, globalThis.");
+    return "Error: No se ha detectado la llave de API de Gemini. Por favor, asegúrate de que esté configurada en el entorno o usa el botón de configuración manual.";
   }
 
   const ai = new GoogleGenAI({ apiKey });
