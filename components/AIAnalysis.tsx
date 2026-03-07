@@ -74,6 +74,12 @@ const AIAnalysis: React.FC<Props> = ({ sales, purchases, expenses, products }) =
               Nuevo análisis
             </button>
             
+            {analysis.includes("configura tu llave de API de Gemini") && (
+              <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">
+                ⚠️ VE A LA PESTAÑA DE "AJUSTES" PARA CONFIGURAR TU LLAVE.
+              </p>
+            )}
+            
             {analysis.includes("No se ha detectado la llave") && (
               <button 
                 onClick={async () => {

@@ -18,7 +18,8 @@ import {
   UserPlus,
   Fingerprint,
   Share2,
-  Cloud
+  Cloud,
+  Sparkles
 } from 'lucide-react';
 import { CompanyInfo, AppSettings, User as UserType } from '../types';
 import { dbService } from '../db';
@@ -97,10 +98,11 @@ const Settings: React.FC<Props> = ({ company, setCompany, settings, setSettings,
       mobilePhone: formData.get('mobilePhone') as string,
     };
     
-    // Guardar tasa de cambio
-    const newSettings = {
+    // Guardar tasa de cambio y llave de Gemini
+    const newSettings: AppSettings = {
       ...settings,
-      exchangeRate: parseNumber(formData.get('exchangeRate') as string) || settings.exchangeRate
+      exchangeRate: parseNumber(formData.get('exchangeRate') as string) || settings.exchangeRate,
+      geminiApiKey: formData.get('geminiApiKey') as string
     };
 
     setCompany(newCompany);
@@ -468,6 +470,36 @@ const Settings: React.FC<Props> = ({ company, setCompany, settings, setSettings,
               <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-3 shadow-xl transition-all text-xs uppercase tracking-widest mt-2">
                  <Save size={18} /> GUARDAR CAMBIOS
               </button>
+            </section>
+
+            {/* Inteligencia Artificial (Gemini) */}
+            <section className="bg-[#1e293b] p-6 rounded-[2.5rem] border border-slate-700 shadow-xl space-y-5">
+              <h2 className="text-xs font-black uppercase tracking-widest text-amber-400 flex items-center gap-2">
+                <Sparkles size={16} /> Inteligencia Artificial (Gemini)
+              </h2>
+              <div className="space-y-4">
+                <p className="text-[9px] font-bold text-slate-400 uppercase leading-relaxed tracking-tight">
+                  SI USAS LA APP FUERA DE AI STUDIO (COMO EN TU CELULAR), DEBES CONFIGURAR TU PROPIA LLAVE DE API PARA QUE EL ANÁLISIS INTELIGENTE FUNCIONE.
+                </p>
+                <div className="space-y-1">
+                  <label className="text-[8px] font-black text-slate-500 uppercase ml-2">Gemini API Key</label>
+                  <input 
+                    name="geminiApiKey" 
+                    type="password"
+                    defaultValue={settings.geminiApiKey} 
+                    placeholder="Pega tu llave aquí..."
+                    className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 text-xs font-bold outline-none focus:border-amber-500/50" 
+                  />
+                </div>
+                <a 
+                  href="https://aistudio.google.com/app/apikey" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="block text-center text-[8px] font-black text-amber-500 hover:text-amber-400 uppercase tracking-widest underline"
+                >
+                  Obtener llave gratis en Google AI Studio
+                </a>
+              </div>
             </section>
 
             {/* Gestión de Usuario / Perfil */}

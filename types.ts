@@ -37,6 +37,7 @@ export interface AppSettings {
   includeQr: boolean;
   ticketHeader?: string;
   ticketFooter?: string;
+  geminiApiKey?: string;
 }
 
 export interface Product {

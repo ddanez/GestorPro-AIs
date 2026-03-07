@@ -1,46 +1,11 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
-
-// Use process.env.GEMINI_API_KEY as per guidelines
-// The platform will inject this value automatically
 export const analyzeFinancialData = async (data: any) => {
-  // Robust key detection for different environments
-  const getApiKey = () => {
-    try {
-      // Try process.env (Vite define)
-      if (typeof process !== 'undefined' && process.env) {
-        if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY;
-        if ((process.env as any).API_KEY) return (process.env as any).API_KEY;
-        if ((process.env as any).VITE_GEMINI_API_KEY) return (process.env as any).VITE_GEMINI_API_KEY;
-      }
-      
-      // Try import.meta.env
-      if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
-        if ((import.meta as any).env.VITE_GEMINI_API_KEY) return (import.meta as any).env.VITE_GEMINI_API_KEY;
-      }
-
-      // Try global window/globalThis
-      const g = (globalThis as any);
-      if (g.process?.env?.GEMINI_API_KEY) return g.process.env.GEMINI_API_KEY;
-      if (g.API_KEY) return g.API_KEY;
-      
-    } catch (e) {
-      console.warn("Error accessing environment variables:", e);
-    }
-    return "";
-  };
-
-  const apiKey = getApiKey();
+  const token = localStorage.getItem('auth_token');
   
-  if (!apiKey) {
-    console.error("❌ Gemini API Key is missing. Sources checked: process.env, import.meta.env, globalThis.");
-    return "Error: No se ha detectado la llave de API de Gemini. Por favor, asegúrate de que esté configurada en el entorno o usa el botón de configuración manual.";
+  if (!token) {
+    return "Error: No se ha detectado una sesión activa. Por favor, inicia sesión de nuevo.";
   }
 
-  const ai = new GoogleGenAI({ apiKey });
-  // Use a more stable model version
-  const model = "gemini-3-flash-preview";
-  
   const prompt = `
     Eres un experto analista financiero para pequeños negocios. 
     Analiza los siguientes datos financieros de un negocio llamado "D'Danez Gestor Pro".
@@ -52,38 +17,32 @@ export const analyzeFinancialData = async (data: any) => {
     3. Identificación de tendencias en ventas y gastos.
     4. 3 recomendaciones estratégicas para mejorar la utilidad neta.
     
-    DATOS:
-    ${JSON.stringify(data, null, 2)}
-    
     Responde en formato Markdown, con un tono profesional pero motivador. 
     Usa emojis para resaltar puntos clave.
     Menciona específicamente la "Utilidad Neta" (Ingresos - Compras - Gastos).
   `;
 
   try {
-    console.log(`🤖 Iniciando análisis con Gemini (${model})...`);
-    const response = await ai.models.generateContent({
-      model,
-      contents: [{ parts: [{ text: prompt }] }],
+    console.log("🤖 Solicitando análisis al servidor...");
+    const response = await fetch('/api/gemini/analyze', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ prompt, data })
     });
-    
-    if (!response || !response.text) {
-      throw new Error("La respuesta de Gemini está vacía.");
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Error en la respuesta del servidor');
     }
 
+    const result = await response.json();
     console.log("✅ Análisis completado exitosamente.");
-    return response.text;
+    return result.text;
   } catch (error: any) {
-    console.error("❌ Error al analizar datos con Gemini:", error);
-    
-    // Provide more specific error messages if possible
-    if (error.message?.includes("API key not valid")) {
-      return "Error: La llave de API de Gemini no es válida. Por favor, verifícala.";
-    }
-    if (error.message?.includes("model not found")) {
-      return `Error: El modelo '${model}' no está disponible o no existe.`;
-    }
-    
-    return "Lo siento, no pude realizar el análisis en este momento. Por favor, intenta más tarde.";
+    console.error("❌ Error al analizar datos con el servidor:", error);
+    return `Lo siento, no pude realizar el análisis en este momento. ${error.message || 'Por favor, intenta más tarde.'}`;
   }
 };

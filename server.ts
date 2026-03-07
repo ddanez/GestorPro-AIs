@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import { GoogleGenAI } from "@google/genai";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -246,6 +247,68 @@ app.delete('/api/:store/:id', authenticateToken, (req: any, res: any) => {
     if (err) return res.status(500).json({ message: err.message });
     res.json({ success: true });
   });
+});
+
+// --- API: GEMINI ANALYSIS ---
+
+app.post('/api/gemini/analyze', authenticateToken, async (req: any, res: any) => {
+  const { prompt, data } = req.body;
+  
+  if (!prompt) {
+    return res.status(400).json({ message: 'Prompt es requerido' });
+  }
+
+  let apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.VITE_GEMINI_API_KEY;
+  
+  // If not in environment, check the database
+  if (!apiKey) {
+    try {
+      const settingsRow: any = await new Promise((resolve, reject) => {
+        db.get("SELECT data FROM settings WHERE id = 'app_settings'", (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+
+      if (settingsRow && settingsRow.data) {
+        const settings = JSON.parse(settingsRow.data);
+        if (settings.geminiApiKey) {
+          apiKey = settings.geminiApiKey;
+          console.log('🔑 Usando Gemini API Key desde la base de datos');
+        }
+      }
+    } catch (dbErr) {
+      console.error('⚠️ Error al buscar API Key en la DB:', dbErr);
+    }
+  }
+
+  if (!apiKey) {
+    console.error('❌ Error: GEMINI_API_KEY no configurada');
+    return res.status(500).json({ 
+      message: 'La llave de Gemini no está configurada. Por favor, ve a AJUSTES y configura tu llave de API de Gemini.' 
+    });
+  }
+
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+    const model = ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `${prompt}\n\nDATOS PARA ANALIZAR:\n${JSON.stringify(data || {}, null, 2)}`,
+      config: {
+        temperature: 0.7,
+        topP: 0.95,
+        topK: 64,
+      }
+    });
+
+    const response = await model;
+    res.json({ text: response.text });
+  } catch (error: any) {
+    console.error('❌ Error en análisis de Gemini:', error);
+    res.status(500).json({ 
+      message: 'Error al procesar el análisis con la IA: ' + (error.message || 'Error desconocido')
+    });
+  }
 });
 
 // --- API: 404 HANDLER ---
