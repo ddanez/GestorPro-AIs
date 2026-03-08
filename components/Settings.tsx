@@ -24,6 +24,9 @@ import {
 import { CompanyInfo, AppSettings, User as UserType } from '../types';
 import { dbService } from '../db';
 
+import { jsPDF } from 'jspdf';
+import { TECHNICAL_DESCRIPTION, PROMOTIONAL_DESCRIPTION } from '../constants/documentation';
+
 interface Props {
   company: CompanyInfo;
   setCompany: React.Dispatch<React.SetStateAction<CompanyInfo>>;
@@ -43,6 +46,19 @@ const Settings: React.FC<Props> = ({ company, setCompany, settings, setSettings,
     share: 'checking',
     secure: window.isSecureContext
   });
+
+  const downloadPDF = (title: string, content: string, filename: string) => {
+    const doc = new jsPDF();
+    const splitText = doc.splitTextToSize(content, 180);
+    
+    doc.setFontSize(20);
+    doc.text(title, 10, 20);
+    
+    doc.setFontSize(10);
+    doc.text(splitText, 10, 35);
+    
+    doc.save(filename);
+  };
 
   useEffect(() => {
     const checkCapabilities = async () => {
@@ -591,7 +607,33 @@ const Settings: React.FC<Props> = ({ company, setCompany, settings, setSettings,
               </div>
             </section>
 
-           {/* Maintenance Section */}
+            {/* Documentation Section */}
+            <section className="bg-[#1e293b] p-6 rounded-[2.5rem] border border-slate-700 shadow-xl space-y-5">
+              <h2 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center gap-2">
+                <Cloud size={16} /> Documentación del Sistema
+              </h2>
+              <p className="text-[9px] font-bold text-slate-400 uppercase leading-relaxed tracking-tight">
+                DESCARGA LAS DESCRIPCIONES OFICIALES DE LA APLICACIÓN PARA USO TÉCNICO O COMERCIAL.
+              </p>
+              <div className="grid grid-cols-1 gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => downloadPDF('DESCRIPCIÓN TÉCNICA - GESTOR PRO', TECHNICAL_DESCRIPTION, 'GestorPro_Tecnico.pdf')}
+                  className="w-full bg-blue-600/10 hover:bg-blue-600 text-blue-500 hover:text-white border border-blue-600/30 p-4 rounded-2xl transition-all font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
+                >
+                  <Download size={16} /> DESCARGAR DESCRIPCIÓN TÉCNICA (PDF)
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => downloadPDF('DESCRIPCIÓN PROMOCIONAL - GESTOR PRO', PROMOTIONAL_DESCRIPTION, 'GestorPro_Promocional.pdf')}
+                  className="w-full bg-indigo-600/10 hover:bg-indigo-600 text-indigo-500 hover:text-white border border-indigo-600/30 p-4 rounded-2xl transition-all font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
+                >
+                  <Download size={16} /> DESCARGAR DESCRIPCIÓN PROMOCIONAL (PDF)
+                </button>
+              </div>
+            </section>
+
+            {/* Maintenance Section */}
            <section className="bg-[#1e293b] p-6 rounded-[2.5rem] border border-slate-700 shadow-xl space-y-5">
              <h2 className="text-xs font-black uppercase tracking-widest text-emerald-500 flex items-center gap-2">
                <Database size={16} /> Mantenimiento de Datos
