@@ -44,7 +44,8 @@ db.serialize(() => {
         username TEXT UNIQUE, 
         password TEXT, 
         role TEXT, 
-        name TEXT
+        name TEXT,
+        permissions TEXT
       )`);
     } else if (store === 'authenticators') {
       db.run(`CREATE TABLE IF NOT EXISTS authenticators (
@@ -64,9 +65,21 @@ db.serialize(() => {
   db.get("SELECT * FROM users WHERE username = 'admin'", (err, row) => {
     if (!row) {
       const hashedPassword = bcrypt.hashSync('admin123', 10);
-      db.run("INSERT INTO users (id, username, password, role, name) VALUES (?, ?, ?, ?, ?)", 
-        [crypto.randomUUID(), 'admin', hashedPassword, 'admin', 'Administrador']);
+      db.run("INSERT INTO users (id, username, password, role, name, permissions) VALUES (?, ?, ?, ?, ?, ?)", 
+        [crypto.randomUUID(), 'admin', hashedPassword, 'admin', 'Administrador', '["dashboard","inventory","sales","purchases","customers","suppliers","sellers","cxc","cxp","expenses","reports","settings"]']);
       console.log("👤 Usuario admin por defecto creado: admin / admin123");
+    }
+  });
+
+  // Migration: Add permissions column if not exists
+  db.all("PRAGMA table_info(users)", (err, columns: any[]) => {
+    if (columns && !columns.find(c => c.name === 'permissions')) {
+      db.run("ALTER TABLE users ADD COLUMN permissions TEXT", (err) => {
+        if (!err) {
+          // Grant all permissions to existing admin
+          db.run("UPDATE users SET permissions = '[\"dashboard\",\"inventory\",\"sales\",\"purchases\",\"customers\",\"suppliers\",\"sellers\",\"cxc\",\"cxp\",\"expenses\",\"reports\",\"settings\"]' WHERE role = 'admin'");
+        }
+      });
     }
   });
 });
@@ -74,16 +87,17 @@ db.serialize(() => {
 // --- AUTH ROUTES ---
 
 app.post('/api/auth/register', (req: any, res: any) => {
-  const { username, password, role, name } = req.body;
+  const { username, password, role, name, permissions } = req.body;
   if (!username || !password || !role || !name) {
     return res.status(400).json({ message: 'Todos los campos son requeridos' });
   }
 
   const hashedPassword = bcrypt.hashSync(password, 10);
   const id = crypto.randomUUID();
+  const perms = permissions ? JSON.stringify(permissions) : (role === 'admin' ? '["dashboard","inventory","sales","purchases","customers","suppliers","sellers","cxc","cxp","expenses","reports","settings"]' : '["dashboard","sales","customers","cxc"]');
 
-  db.run("INSERT INTO users (id, username, password, role, name) VALUES (?, ?, ?, ?, ?)", 
-    [id, username, hashedPassword, role, name], (err) => {
+  db.run("INSERT INTO users (id, username, password, role, name, permissions) VALUES (?, ?, ?, ?, ?, ?)", 
+    [id, username, hashedPassword, role, name, perms], (err) => {
       if (err) {
         if (err.message.includes('UNIQUE constraint failed')) {
           return res.status(400).json({ message: 'El nombre de usuario ya existe' });
@@ -136,10 +150,11 @@ app.post('/api/auth/login', (req: any, res: any) => {
     }
 
     console.log(`🎉 Login exitoso para: ${username}`);
-    const token = jwt.sign({ id: user.id, username: user.username, role: user.role, name: user.name }, JWT_SECRET, { expiresIn: '24h' });
+    const permissions = user.permissions ? JSON.parse(user.permissions) : [];
+    const token = jwt.sign({ id: user.id, username: user.username, role: user.role, name: user.name, permissions }, JWT_SECRET, { expiresIn: '24h' });
     res.json({ 
       token, 
-      user: { id: user.id, username: user.username, role: user.role, name: user.name } 
+      user: { id: user.id, username: user.username, role: user.role, name: user.name, permissions } 
     });
   });
 });
@@ -215,7 +230,13 @@ app.get('/api/:store', authenticateToken, (req: any, res: any) => {
     if (err) return res.status(500).json({ message: err.message });
     try {
       if (store === 'users') {
-        res.json(rows.map((row: any) => ({ id: row.id, username: row.username, role: row.role, name: row.name })));
+        res.json(rows.map((row: any) => ({ 
+          id: row.id, 
+          username: row.username, 
+          role: row.role, 
+          name: row.name,
+          permissions: row.permissions ? JSON.parse(row.permissions) : []
+        })));
       } else {
         res.json(rows.map((row: any) => JSON.parse(row.data)));
       }
@@ -229,7 +250,19 @@ app.post('/api/:store', authenticateToken, (req: any, res: any) => {
   const { store } = req.params;
   const item = req.body;
   if (!VALID_STORES.includes(store)) return res.status(404).json({ message: 'Almacén no válido' });
-  if (store === 'users') return res.status(400).json({ message: 'Use /api/auth/register para crear usuarios' });
+  
+  if (store === 'users') {
+    if (req.user.role !== 'admin') return res.status(403).json({ message: 'No autorizado' });
+    // Update user (role/permissions)
+    const { role, permissions, name } = item;
+    db.run("UPDATE users SET role = ?, permissions = ?, name = ? WHERE id = ?", 
+      [role, JSON.stringify(permissions), name, item.id], (err) => {
+        if (err) return res.status(500).json({ message: err.message });
+        res.json({ success: true });
+      });
+    return;
+  }
+
   if (!item.id) return res.status(400).json({ message: 'ID requerido' });
   
   db.run(`INSERT OR REPLACE INTO ${store} (id, data) VALUES (?, ?)`, [item.id, JSON.stringify(item)], (err) => {

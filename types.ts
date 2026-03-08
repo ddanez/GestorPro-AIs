@@ -153,4 +153,5 @@ export interface User {
   role: UserRole;
   name: string;
   token?: string;
+  permissions?: AppTab[];
 }
