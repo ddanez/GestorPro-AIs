@@ -32,6 +32,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'catalog' | 'cart'>('catalog');
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [mermaQueue, setMermaQueue] = useState<{ productId: string, diff: number, originalQty: number }[]>([]);
   const [showMermaPrompt, setShowMermaPrompt] = useState<{ productId: string, diff: number, originalQty: number } | null>(null);
 
   // Estados para condiciones comerciales
@@ -65,20 +66,6 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
     const product = products.find(p => p.id === productId);
     if (!product || newQty < 0) return;
     
-    // Si estamos editando una venta, y la cantidad nueva es menor a la original de esa venta
-    if (editingSale) {
-      const originalItem = editingSale.items.find(i => i.productId === productId);
-      if (originalItem && newQty < originalItem.quantity) {
-        setShowMermaPrompt({ 
-          productId, 
-          diff: originalItem.quantity - newQty,
-          originalQty: originalItem.quantity
-        });
-        // No actualizamos el carrito todavía, esperamos la decisión del prompt
-        return;
-      }
-    }
-
     if (!editingSale && newQty > (product.stock || 0)) return;
     setCart(prev => prev.map(item => item.productId === productId ? { ...item, quantity: newQty } : item));
   };
@@ -91,8 +78,35 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
   const finishSale = async () => {
     if (!selectedCustomerId) return alert('Seleccione un cliente');
     if (cart.length === 0) return alert('Carrito vacío');
-    setIsSaving(true);
 
+    // Si es edición, verificar si hay reducciones de cantidad para el prompt de merma
+    if (editingSale) {
+      const reductions: { productId: string, diff: number, originalQty: number }[] = [];
+      for (const originalItem of editingSale.items) {
+        const currentItem = cart.find(i => i.productId === originalItem.productId);
+        // Si el item fue eliminado del carrito o su cantidad es menor
+        const currentQty = currentItem ? currentItem.quantity : 0;
+        if (currentQty < originalItem.quantity) {
+          reductions.push({
+            productId: originalItem.productId,
+            diff: originalItem.quantity - currentQty,
+            originalQty: originalItem.quantity
+          });
+        }
+      }
+
+      if (reductions.length > 0) {
+        setMermaQueue(reductions);
+        setShowMermaPrompt(reductions[0]);
+        return;
+      }
+    }
+
+    await executeSaleSave();
+  };
+
+  const executeSaleSave = async () => {
+    setIsSaving(true);
     try {
       const customer = customers.find(c => c.id === selectedCustomerId);
       
@@ -145,7 +159,6 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
 
       // Registrar o actualizar el pago
       if (newSale.paidAmountUSD && newSale.paidAmountUSD > 0) {
-        // Si es edición, buscamos el pago anterior y lo actualizamos o creamos uno nuevo
         const existingPayments = await dbService.getAll<any>('payments');
         const salePayment = existingPayments.find(p => p.relatedId === newSale.id);
         
@@ -502,11 +515,14 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
               <button 
                 onClick={async () => {
                   // Retornar a Inventario
-                  // No hacemos nada especial aquí, el finishSale se encargará de restaurar el stock
-                  // Solo actualizamos el carrito con la nueva cantidad
-                  const newQty = showMermaPrompt.originalQty - showMermaPrompt.diff;
-                  setCart(prev => prev.map(item => item.productId === showMermaPrompt.productId ? { ...item, quantity: newQty } : item));
-                  setShowMermaPrompt(null);
+                  const nextQueue = mermaQueue.slice(1);
+                  setMermaQueue(nextQueue);
+                  if (nextQueue.length > 0) {
+                    setShowMermaPrompt(nextQueue[0]);
+                  } else {
+                    setShowMermaPrompt(null);
+                    await executeSaleSave();
+                  }
                 }}
                 className="w-full bg-emerald-500 text-white font-black py-4 rounded-xl text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
               >
@@ -525,16 +541,24 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                     setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
                   }
                   
-                  const newQty = showMermaPrompt.originalQty - showMermaPrompt.diff;
-                  setCart(prev => prev.map(item => item.productId === showMermaPrompt.productId ? { ...item, quantity: newQty } : item));
-                  setShowMermaPrompt(null);
+                  const nextQueue = mermaQueue.slice(1);
+                  setMermaQueue(nextQueue);
+                  if (nextQueue.length > 0) {
+                    setShowMermaPrompt(nextQueue[0]);
+                  } else {
+                    setShowMermaPrompt(null);
+                    await executeSaleSave();
+                  }
                 }}
                 className="w-full bg-rose-500 text-white font-black py-4 rounded-xl text-[10px] uppercase tracking-widest shadow-lg shadow-rose-500/20 active:scale-95 transition-all"
               >
                 REGISTRAR COMO MERMA
               </button>
               <button 
-                onClick={() => setShowMermaPrompt(null)}
+                onClick={() => {
+                  setShowMermaPrompt(null);
+                  setMermaQueue([]);
+                }}
                 className="w-full py-3 text-slate-500 font-black uppercase text-[9px] tracking-widest"
               >
                 CANCELAR
