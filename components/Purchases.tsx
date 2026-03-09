@@ -85,17 +85,57 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
         paidAmountUSD: isCredit ? initialPayment : finalTotal
       };
 
-      const updatedProducts = [...products];
+      let currentProducts = [...products];
+      
+      // Si es una edición, primero restauramos el stock original en nuestra copia local
+      if (editingPurchase) {
+        for (const item of editingPurchase.items) {
+          const pIndex = currentProducts.findIndex(prod => prod.id === item.productId);
+          if (pIndex !== -1) {
+            currentProducts[pIndex] = {
+              ...currentProducts[pIndex],
+              stock: (currentProducts[pIndex].stock || 0) - (item.quantity || 0)
+            };
+            await dbService.put('products', currentProducts[pIndex]);
+            
+            // Registrar restauración
+            await dbService.put('movements', {
+              id: crypto.randomUUID(),
+              date: new Date().toISOString(),
+              productId: item.productId,
+              productName: item.name,
+              type: 'restoration',
+              quantity: -(item.quantity || 0),
+              stockAfter: currentProducts[pIndex].stock,
+              relatedId: editingPurchase.id
+            });
+          }
+        }
+      }
+
+      // Ahora sumamos el nuevo stock usando la lista ya restaurada
       for (const item of cart) {
-        const idx = updatedProducts.findIndex(p => p.id === item.productId);
-        if (idx !== -1) {
-          updatedProducts[idx] = { 
-            ...updatedProducts[idx], 
-            stock: (updatedProducts[idx].stock || 0) + (item.quantity || 0), 
-            costUSD: item.costUSD || 0, 
-            priceUSD: item.newSalePriceUSD || 0 
+        const pIndex = currentProducts.findIndex(prod => prod.id === item.productId);
+        if (pIndex !== -1) {
+          currentProducts[pIndex] = {
+            ...currentProducts[pIndex],
+            stock: (currentProducts[pIndex].stock || 0) + (item.quantity || 0),
+            costUSD: item.costUSD || 0,
+            priceUSD: item.newSalePriceUSD || 0
           };
-          await dbService.put('products', updatedProducts[idx]);
+          await dbService.put('products', currentProducts[pIndex]);
+
+          // Registrar compra
+          await dbService.put('movements', {
+            id: crypto.randomUUID(),
+            date: newPurchase.date,
+            productId: item.productId,
+            productName: item.name,
+            type: 'purchase',
+            quantity: item.quantity || 0,
+            stockAfter: currentProducts[pIndex].stock,
+            relatedId: newPurchase.id
+          });
         }
       }
 

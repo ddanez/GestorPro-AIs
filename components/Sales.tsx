@@ -125,33 +125,56 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
         paidAmountUSD: isCredit ? initialPayment : finalTotal,
       };
 
-      // Si es una edición, primero restauramos el stock original
+      let currentProducts = [...products];
+      
+      // Si es una edición, primero restauramos el stock original en nuestra copia local
       if (editingSale) {
-        const updatedProducts = [...products];
         for (const item of editingSale.items) {
-          const pIndex = updatedProducts.findIndex(prod => prod.id === item.productId);
+          const pIndex = currentProducts.findIndex(prod => prod.id === item.productId);
           if (pIndex !== -1) {
-            updatedProducts[pIndex] = {
-              ...updatedProducts[pIndex],
-              stock: (updatedProducts[pIndex].stock || 0) + (item.quantity || 0)
+            currentProducts[pIndex] = {
+              ...currentProducts[pIndex],
+              stock: (currentProducts[pIndex].stock || 0) + (item.quantity || 0)
             };
-            await dbService.put('products', updatedProducts[pIndex]);
+            // Actualizamos en DB individualmente para asegurar persistencia
+            await dbService.put('products', currentProducts[pIndex]);
+
+            // Registrar restauración
+            await dbService.put('movements', {
+              id: crypto.randomUUID(),
+              date: new Date().toISOString(),
+              productId: item.productId,
+              productName: item.name,
+              type: 'restoration',
+              quantity: item.quantity || 0,
+              stockAfter: currentProducts[pIndex].stock,
+              relatedId: editingSale.id
+            });
           }
         }
-        // Actualizamos el estado local de productos para que la siguiente parte use el stock restaurado
-        setProducts(updatedProducts);
       }
 
-      // Ahora restamos el nuevo stock
-      const updatedProductsAfter = [...products];
+      // Ahora restamos el nuevo stock usando la lista ya restaurada
       for (const item of cart) {
-        const pIndex = updatedProductsAfter.findIndex(prod => prod.id === item.productId);
+        const pIndex = currentProducts.findIndex(prod => prod.id === item.productId);
         if (pIndex !== -1) {
-          updatedProductsAfter[pIndex] = {
-            ...updatedProductsAfter[pIndex],
-            stock: (updatedProductsAfter[pIndex].stock || 0) - (item.quantity || 0)
+          currentProducts[pIndex] = {
+            ...currentProducts[pIndex],
+            stock: (currentProducts[pIndex].stock || 0) - (item.quantity || 0)
           };
-          await dbService.put('products', updatedProductsAfter[pIndex]);
+          await dbService.put('products', currentProducts[pIndex]);
+
+          // Registrar venta
+          await dbService.put('movements', {
+            id: crypto.randomUUID(),
+            date: newSale.date,
+            productId: item.productId,
+            productName: item.name,
+            type: 'sale',
+            quantity: -(item.quantity || 0),
+            stockAfter: currentProducts[pIndex].stock,
+            relatedId: newSale.id
+          });
         }
       }
 
@@ -179,7 +202,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
         setSales(prev => [newSale, ...prev]);
       }
       
-      setProducts(updatedProductsAfter);
+      setProducts(currentProducts);
       setTicketData(newSale);
       setIsModalOpen(false);
       setEditingSale(null);
@@ -538,6 +561,20 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                       mermaTotal: (product.mermaTotal || 0) + showMermaPrompt.diff
                     };
                     await dbService.put('products', updatedProduct);
+                    
+                    // Registrar movimiento de merma (aunque el stock ya se ajustó en executeSaleSave, 
+                    // aquí estamos marcando la diferencia como merma específicamente)
+                    await dbService.put('movements', {
+                      id: crypto.randomUUID(),
+                      date: new Date().toISOString(),
+                      productId: product.id,
+                      productName: product.name,
+                      type: 'merma',
+                      quantity: -showMermaPrompt.diff,
+                      stockAfter: product.stock, // El stock ya fue ajustado
+                      relatedId: editingSale?.id
+                    });
+
                     setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
                   }
                   

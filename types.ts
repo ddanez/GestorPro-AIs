@@ -52,6 +52,17 @@ export interface Product {
   mermaTotal?: number;
 }
 
+export interface Movement {
+  id: string;
+  date: string;
+  productId: string;
+  productName: string;
+  type: 'sale' | 'purchase' | 'adjustment' | 'merma' | 'restoration';
+  quantity: number; // Positive for additions, negative for subtractions
+  stockAfter: number;
+  relatedId?: string;
+}
+
 export interface Customer {
   id: string;
   name: string;
