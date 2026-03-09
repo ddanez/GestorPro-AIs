@@ -158,7 +158,7 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
          const filtered = prev.filter(p => p.id !== newPurchase.id);
          return [newPurchase, ...filtered].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       });
-      setProducts(updatedProducts);
+      setProducts(currentProducts);
       setIsRegisterMode(false);
       setEditingPurchase(null);
       setCart([]);
