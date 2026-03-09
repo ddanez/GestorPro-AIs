@@ -121,8 +121,8 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
           currentProducts[pIndex] = {
             ...currentProducts[pIndex],
             stock: (currentProducts[pIndex].stock || 0) + (item.quantity || 0),
-            costUSD: item.costUSD || 0,
-            priceUSD: item.newSalePriceUSD || 0
+            costUSD: item.costUSD || currentProducts[pIndex].costUSD,
+            priceUSD: item.newSalePriceUSD || currentProducts[pIndex].priceUSD
           };
           await dbService.put('products', currentProducts[pIndex]);
 
