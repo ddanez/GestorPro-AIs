@@ -129,7 +129,7 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
           // Registrar compra
           await dbService.put('movements', {
             id: crypto.randomUUID(),
-            date: newPurchase.date,
+            date: new Date().toISOString(),
             productId: item.productId,
             productName: item.name,
             type: 'purchase',

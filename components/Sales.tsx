@@ -176,7 +176,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
           // Registrar venta
           await dbService.put('movements', {
             id: crypto.randomUUID(),
-            date: newSale.date,
+            date: new Date().toISOString(),
             productId: item.productId,
             productName: item.name,
             type: 'sale',
@@ -580,7 +580,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                       productName: product.name,
                       type: 'merma',
                       quantity: -showMermaPrompt.diff,
-                      stockAfter: product.stock,
+                      stockAfter: (product.stock || 0) - showMermaPrompt.diff,
                       relatedId: editingSale?.id
                     });
 
