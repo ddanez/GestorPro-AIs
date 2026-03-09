@@ -42,6 +42,22 @@ const Dashboard: React.FC<Props> = ({ sales, purchases, expenses, products, sett
     const totalCreditsPending = sales.filter(s => s.status === 'pending').reduce((sum, s) => sum + ((s.totalUSD || 0) - (s.paidAmountUSD || 0)), 0);
     const lowStockProducts = products.filter(p => (p.stock || 0) <= (p.minStock || 0));
 
+    // Calcular productos más vendidos
+    const productSales: Record<string, { name: string, quantity: number, total: number }> = {};
+    sales.forEach(sale => {
+      sale.items.forEach(item => {
+        if (!productSales[item.productId]) {
+          productSales[item.productId] = { name: item.name, quantity: 0, total: 0 };
+        }
+        productSales[item.productId].quantity += item.quantity;
+        productSales[item.productId].total += (item.priceUSD || 0) * item.quantity;
+      });
+    });
+
+    const topProducts = Object.values(productSales)
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 5);
+
     // Datos para el gráfico de tendencia (últimos 7 días)
     const last7Days = [...Array(7)].map((_, i) => {
       const d = new Date();
@@ -58,6 +74,7 @@ const Dashboard: React.FC<Props> = ({ sales, purchases, expenses, products, sett
     return {
       grossSalesToday, cashSalesToday, creditSalesToday, collectionsToday,
       totalPurchasesToday, totalExpensesToday, wasteTodayUSD, totalCreditsPending, lowStockProducts,
+      topProducts,
       last7Days
     };
   }, [sales, purchases, expenses, products, today]);
@@ -110,6 +127,20 @@ const Dashboard: React.FC<Props> = ({ sales, purchases, expenses, products, sett
               </div>
               <h3 className="text-4xl font-black tracking-tighter">{stats.lowStockProducts.length}</h3>
               <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mt-1">Productos bajo el mínimo</p>
+              
+              {stats.lowStockProducts.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {stats.lowStockProducts.slice(0, 3).map(p => (
+                    <div key={p.id} className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest bg-white/10 p-2 rounded-lg">
+                      <span className="truncate max-w-[100px]">{p.name}</span>
+                      <span className="text-white">{p.stock}</span>
+                    </div>
+                  ))}
+                  {stats.lowStockProducts.length > 3 && (
+                    <p className="text-[8px] text-center opacity-70">y {stats.lowStockProducts.length - 3} más...</p>
+                  )}
+                </div>
+              )}
            </div>
 
            <div className="bg-[#1e293b] p-6 rounded-[2.5rem] border border-slate-700">
@@ -123,6 +154,29 @@ const Dashboard: React.FC<Props> = ({ sales, purchases, expenses, products, sett
                  <p className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest text-center">Capital Pendiente</p>
               </div>
            </div>
+
+           <div className="bg-[#1e293b] p-6 rounded-[2.5rem] border border-slate-700">
+               <div className="flex justify-between items-center mb-4">
+                  <TrendingUp size={24} className="text-indigo-500" />
+                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Rendimiento</span>
+               </div>
+               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Top Productos</p>
+               <div className="mt-4 space-y-3">
+                  {stats.topProducts.length > 0 ? (
+                    stats.topProducts.map((p, i) => (
+                      <div key={i} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black text-slate-500">#{i+1}</span>
+                          <p className="text-[10px] font-black text-white uppercase truncate max-w-[100px]">{p.name}</p>
+                        </div>
+                        <span className="text-[10px] font-black text-indigo-400">{p.quantity} unds</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-[10px] font-black text-slate-600 uppercase text-center py-4">Sin datos de venta</p>
+                  )}
+               </div>
+            </div>
         </div>
 
         <div className="md:col-span-2 bg-[#1e293b] p-6 rounded-[2.5rem] border border-slate-700">
