@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Plus, Search, Tag, UserPlus, ShoppingCart, Trash2, X, CheckCircle2, MessageCircle, UserPlus2, PackageSearch, CreditCard, Loader2 } from 'lucide-react';
+import { Plus, Search, Tag, UserPlus, ShoppingCart, Trash2, X, CheckCircle2, MessageCircle, UserPlus2, PackageSearch, CreditCard, Loader2, Edit2, AlertTriangle } from 'lucide-react';
 import { Sale, Customer, Product, AppSettings, SaleItem, CompanyInfo, Seller } from '../types';
 import { dbService } from '../db';
 import { parseNumber, searchMatch } from '../utils';
@@ -31,6 +31,8 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
   const [ticketData, setTicketData] = useState<Sale | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'catalog' | 'cart'>('catalog');
+  const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [showMermaPrompt, setShowMermaPrompt] = useState<{ productId: string, diff: number, originalQty: number } | null>(null);
 
   // Estados para condiciones comerciales
   const [isCredit, setIsCredit] = useState(false);
@@ -62,7 +64,22 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
   const updateQuantity = (productId: string, newQty: number) => {
     const product = products.find(p => p.id === productId);
     if (!product || newQty < 0) return;
-    if (newQty > (product.stock || 0)) return;
+    
+    // Si estamos editando una venta, y la cantidad nueva es menor a la original de esa venta
+    if (editingSale) {
+      const originalItem = editingSale.items.find(i => i.productId === productId);
+      if (originalItem && newQty < originalItem.quantity) {
+        setShowMermaPrompt({ 
+          productId, 
+          diff: originalItem.quantity - newQty,
+          originalQty: originalItem.quantity
+        });
+        // No actualizamos el carrito todavía, esperamos la decisión del prompt
+        return;
+      }
+    }
+
+    if (!editingSale && newQty > (product.stock || 0)) return;
     setCart(prev => prev.map(item => item.productId === productId ? { ...item, quantity: newQty } : item));
   };
 
@@ -80,8 +97,8 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
       const customer = customers.find(c => c.id === selectedCustomerId);
       
       const newSale: Sale = {
-        id: crypto.randomUUID(),
-        date: new Date().toISOString(),
+        id: editingSale?.id || crypto.randomUUID(),
+        date: editingSale?.date || new Date().toISOString(),
         customerId: selectedCustomerId,
         customerName: customer?.name || 'Venta Rápida',
         items: cart,
@@ -94,24 +111,46 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
         paidAmountUSD: isCredit ? initialPayment : finalTotal,
       };
 
-      const updatedProducts = [...products];
+      // Si es una edición, primero restauramos el stock original
+      if (editingSale) {
+        const updatedProducts = [...products];
+        for (const item of editingSale.items) {
+          const pIndex = updatedProducts.findIndex(prod => prod.id === item.productId);
+          if (pIndex !== -1) {
+            updatedProducts[pIndex] = {
+              ...updatedProducts[pIndex],
+              stock: (updatedProducts[pIndex].stock || 0) + (item.quantity || 0)
+            };
+            await dbService.put('products', updatedProducts[pIndex]);
+          }
+        }
+        // Actualizamos el estado local de productos para que la siguiente parte use el stock restaurado
+        setProducts(updatedProducts);
+      }
+
+      // Ahora restamos el nuevo stock
+      const updatedProductsAfter = [...products];
       for (const item of cart) {
-        const pIndex = updatedProducts.findIndex(prod => prod.id === item.productId);
+        const pIndex = updatedProductsAfter.findIndex(prod => prod.id === item.productId);
         if (pIndex !== -1) {
-          updatedProducts[pIndex] = {
-            ...updatedProducts[pIndex],
-            stock: (updatedProducts[pIndex].stock || 0) - (item.quantity || 0)
+          updatedProductsAfter[pIndex] = {
+            ...updatedProductsAfter[pIndex],
+            stock: (updatedProductsAfter[pIndex].stock || 0) - (item.quantity || 0)
           };
-          await dbService.put('products', updatedProducts[pIndex]);
+          await dbService.put('products', updatedProductsAfter[pIndex]);
         }
       }
 
       await dbService.put('sales', newSale);
 
-      // Registrar el pago inicial
+      // Registrar o actualizar el pago
       if (newSale.paidAmountUSD && newSale.paidAmountUSD > 0) {
+        // Si es edición, buscamos el pago anterior y lo actualizamos o creamos uno nuevo
+        const existingPayments = await dbService.getAll<any>('payments');
+        const salePayment = existingPayments.find(p => p.relatedId === newSale.id);
+        
         await dbService.put('payments', {
-          id: crypto.randomUUID(),
+          id: salePayment?.id || crypto.randomUUID(),
           date: newSale.date,
           relatedId: newSale.id,
           entityId: newSale.customerId,
@@ -121,10 +160,16 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
         });
       }
 
-      setSales(prev => [newSale, ...prev]);
-      setProducts(updatedProducts);
+      if (editingSale) {
+        setSales(prev => prev.map(s => s.id === newSale.id ? newSale : s));
+      } else {
+        setSales(prev => [newSale, ...prev]);
+      }
+      
+      setProducts(updatedProductsAfter);
       setTicketData(newSale);
       setIsModalOpen(false);
+      setEditingSale(null);
       setCart([]);
       setSelectedCustomerId('');
       setIsCredit(false);
@@ -171,7 +216,23 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
               <p className="text-sm font-black text-white">${(sale.totalUSD || 0).toFixed(2)}</p>
               <p className="text-[8px] font-bold text-orange-500">{((sale.totalUSD || 0) * (sale.exchangeRate || settings.exchangeRate)).toLocaleString()} Bs</p>
             </div>
-            <button onClick={() => setTicketData(sale)} className="p-2 bg-slate-800 rounded-lg border border-slate-700 text-orange-500 transition-colors hover:bg-slate-700"><MessageCircle size={16}/></button>
+            <div className="flex gap-2">
+              <button onClick={() => {
+                setEditingSale(JSON.parse(JSON.stringify(sale)));
+                setCart([...sale.items]);
+                setSelectedCustomerId(sale.customerId);
+                setIsCredit(sale.status === 'pending');
+                setIsDiscount((sale.discountUSD || 0) > 0);
+                setDiscountVal(sale.discountUSD || 0);
+                setInitialPayment(sale.initialPaymentUSD || 0);
+                setIsModalOpen(true);
+              }} className="p-2 bg-slate-800 rounded-lg border border-slate-700 text-slate-400 transition-colors hover:bg-slate-700 hover:text-white">
+                <Edit2 size={16}/>
+              </button>
+              <button onClick={() => setTicketData(sale)} className="p-2 bg-slate-800 rounded-lg border border-slate-700 text-orange-500 transition-colors hover:bg-slate-700">
+                <MessageCircle size={16}/>
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -183,7 +244,16 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                 <div className="p-2 bg-orange-500 rounded-xl text-white shadow-lg"><ShoppingCart size={20} /></div>
                 <h2 className="text-sm font-black uppercase tracking-widest text-white">Punto de Venta</h2>
              </div>
-             <button onClick={() => setIsModalOpen(false)} className="p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"><X size={24}/></button>
+             <button onClick={() => {
+               setIsModalOpen(false);
+               setEditingSale(null);
+               setCart([]);
+               setSelectedCustomerId('');
+               setIsCredit(false);
+               setIsDiscount(false);
+               setDiscountVal(0);
+               setInitialPayment(0);
+             }} className="p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"><X size={24}/></button>
           </div>
 
           <div className="flex-1 overflow-hidden flex flex-col md:flex-row relative">
@@ -416,6 +486,63 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
         </div>
       )}
       <TicketModal isOpen={!!ticketData} onClose={() => setTicketData(null)} data={ticketData} company={company} settings={settings} />
+
+      {/* PROMPT DE MERMA */}
+      {showMermaPrompt && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[400] flex items-center justify-center p-4">
+          <div className="bg-[#1e293b] w-full max-w-sm rounded-[2.5rem] p-8 border border-slate-700 shadow-2xl animate-in zoom-in-95">
+            <div className="w-16 h-16 bg-orange-500/10 text-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <AlertTriangle size={32} />
+            </div>
+            <h2 className="text-lg font-black text-white mb-2 uppercase tracking-tighter text-center">Ajuste de Cantidad</h2>
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-tight text-center mb-8">
+              HAS REDUCIDO LA CANTIDAD EN <span className="text-white">{showMermaPrompt.diff.toFixed(2)}</span> UNIDADES. ¿QUÉ DESEAS HACER CON ESTA DIFERENCIA?
+            </p>
+            <div className="space-y-3">
+              <button 
+                onClick={async () => {
+                  // Retornar a Inventario
+                  // No hacemos nada especial aquí, el finishSale se encargará de restaurar el stock
+                  // Solo actualizamos el carrito con la nueva cantidad
+                  const newQty = showMermaPrompt.originalQty - showMermaPrompt.diff;
+                  setCart(prev => prev.map(item => item.productId === showMermaPrompt.productId ? { ...item, quantity: newQty } : item));
+                  setShowMermaPrompt(null);
+                }}
+                className="w-full bg-emerald-500 text-white font-black py-4 rounded-xl text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+              >
+                RETORNAR A INVENTARIO
+              </button>
+              <button 
+                onClick={async () => {
+                  // Registrar como Merma
+                  const product = products.find(p => p.id === showMermaPrompt.productId);
+                  if (product) {
+                    const updatedProduct = {
+                      ...product,
+                      mermaTotal: (product.mermaTotal || 0) + showMermaPrompt.diff
+                    };
+                    await dbService.put('products', updatedProduct);
+                    setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+                  }
+                  
+                  const newQty = showMermaPrompt.originalQty - showMermaPrompt.diff;
+                  setCart(prev => prev.map(item => item.productId === showMermaPrompt.productId ? { ...item, quantity: newQty } : item));
+                  setShowMermaPrompt(null);
+                }}
+                className="w-full bg-rose-500 text-white font-black py-4 rounded-xl text-[10px] uppercase tracking-widest shadow-lg shadow-rose-500/20 active:scale-95 transition-all"
+              >
+                REGISTRAR COMO MERMA
+              </button>
+              <button 
+                onClick={() => setShowMermaPrompt(null)}
+                className="w-full py-3 text-slate-500 font-black uppercase text-[9px] tracking-widest"
+              >
+                CANCELAR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

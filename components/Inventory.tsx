@@ -38,6 +38,7 @@ const Inventory: React.FC<Props> = ({ products, setProducts, settings }) => {
       costUSD: parseNumber(formData.get('costUSD') as string) || 0,
       stock: parseNumber(formData.get('stock') as string) || 0,
       minStock: parseNumber(formData.get('minStock') as string) || 0,
+      mermaTotal: editingProduct?.mermaTotal || 0
     };
     await dbService.put('products', newProduct);
     setProducts(prev => {
@@ -92,6 +93,9 @@ const Inventory: React.FC<Props> = ({ products, setProducts, settings }) => {
                   <td className="px-5 py-3">
                     <p className="text-xs font-black text-white">${(p.priceUSD || 0).toFixed(2)}</p>
                     <p className="text-[8px] text-orange-500 font-bold">{((p.priceUSD || 0) * settings.exchangeRate).toLocaleString()} Bs</p>
+                    {p.mermaTotal && p.mermaTotal > 0 ? (
+                      <p className="text-[7px] text-rose-400 font-bold uppercase mt-1">Merma: {p.mermaTotal % 1 === 0 ? p.mermaTotal : p.mermaTotal.toFixed(2)}</p>
+                    ) : null}
                   </td>
                   <td className="px-5 py-3 text-right">
                     <Edit2 size={14} className="text-slate-600 group-hover:text-orange-500 transition-colors inline" />
@@ -144,6 +148,49 @@ const Inventory: React.FC<Props> = ({ products, setProducts, settings }) => {
                   <input name="costUSD" type="number" step="0.01" lang="en-US" defaultValue={editingProduct?.costUSD} className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-orange-500" required />
                 </div>
               </div>
+
+              {editingProduct && (
+                <div className="bg-rose-500/5 border border-rose-500/20 p-4 rounded-2xl space-y-3">
+                  <div className="flex items-center gap-2 text-rose-500">
+                    <AlertTriangle size={16} />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Registrar Merma / Pérdida</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <input 
+                      id="mermaInput"
+                      type="number" 
+                      step="any" 
+                      placeholder="Cantidad a rebajar..." 
+                      className="flex-1 bg-[#0f172a] border border-slate-700 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-rose-500" 
+                    />
+                    <button 
+                      type="button"
+                      onClick={async () => {
+                        const input = document.getElementById('mermaInput') as HTMLInputElement;
+                        const val = parseNumber(input.value) || 0;
+                        if (val <= 0) return alert('Ingrese una cantidad válida');
+                        if (val > (editingProduct.stock || 0)) return alert('La merma no puede ser mayor al stock');
+                        
+                        const updatedProduct = {
+                          ...editingProduct,
+                          stock: (editingProduct.stock || 0) - val,
+                          mermaTotal: (editingProduct.mermaTotal || 0) + val
+                        };
+                        
+                        await dbService.put('products', updatedProduct);
+                        setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+                        setEditingProduct(updatedProduct);
+                        input.value = '';
+                        alert('Merma registrada correctamente');
+                      }}
+                      className="bg-rose-500 hover:bg-rose-600 text-white font-black px-4 rounded-xl text-[9px] uppercase tracking-widest transition-all"
+                    >
+                      Aplicar
+                    </button>
+                  </div>
+                  <p className="text-[8px] text-slate-500 font-bold uppercase italic">Esto restará del stock y se sumará al total de merma del producto.</p>
+                </div>
+              )}
 
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest">Cerrar</button>
