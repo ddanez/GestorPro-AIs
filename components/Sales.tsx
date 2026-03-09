@@ -34,6 +34,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [mermaQueue, setMermaQueue] = useState<{ productId: string, diff: number, originalQty: number }[]>([]);
   const [showMermaPrompt, setShowMermaPrompt] = useState<{ productId: string, diff: number, originalQty: number } | null>(null);
+  const [mermasAcumuladas, setMermasAcumuladas] = useState<Record<string, number>>({});
 
   // Estados para condiciones comerciales
   const [isCredit, setIsCredit] = useState(false);
@@ -105,7 +106,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
     await executeSaleSave();
   };
 
-  const executeSaleSave = async () => {
+  const executeSaleSave = async (mermas: Record<string, number> = {}) => {
     setIsSaving(true);
     try {
       const customer = customers.find(c => c.id === selectedCustomerId);
@@ -125,31 +126,39 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
         paidAmountUSD: isCredit ? initialPayment : finalTotal,
       };
 
-      let currentProducts = [...products];
+      // Obtener productos frescos de la DB para evitar problemas de estado asíncrono
+      const freshProducts = await dbService.getAll<Product>('products');
+      let currentProducts = [...freshProducts];
       
       // Si es una edición, primero restauramos el stock original en nuestra copia local
       if (editingSale) {
         for (const item of editingSale.items) {
           const pIndex = currentProducts.findIndex(prod => prod.id === item.productId);
           if (pIndex !== -1) {
+            // Si parte de este item fue marcado como merma, NO lo devolvemos al stock
+            const mermaQty = mermas[item.productId] || 0;
+            const qtyToRestore = (item.quantity || 0) - mermaQty;
+
             currentProducts[pIndex] = {
               ...currentProducts[pIndex],
-              stock: (currentProducts[pIndex].stock || 0) + (item.quantity || 0)
+              stock: (currentProducts[pIndex].stock || 0) + qtyToRestore
             };
             // Actualizamos en DB individualmente para asegurar persistencia
             await dbService.put('products', currentProducts[pIndex]);
 
-            // Registrar restauración
-            await dbService.put('movements', {
-              id: crypto.randomUUID(),
-              date: new Date().toISOString(),
-              productId: item.productId,
-              productName: item.name,
-              type: 'restoration',
-              quantity: item.quantity || 0,
-              stockAfter: currentProducts[pIndex].stock,
-              relatedId: editingSale.id
-            });
+            // Registrar restauración (solo si hubo algo que restaurar)
+            if (qtyToRestore > 0) {
+              await dbService.put('movements', {
+                id: crypto.randomUUID(),
+                date: new Date().toISOString(),
+                productId: item.productId,
+                productName: item.name,
+                type: 'restoration',
+                quantity: qtyToRestore,
+                stockAfter: currentProducts[pIndex].stock,
+                relatedId: editingSale.id
+              });
+            }
           }
         }
       }
@@ -544,7 +553,8 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                     setShowMermaPrompt(nextQueue[0]);
                   } else {
                     setShowMermaPrompt(null);
-                    await executeSaleSave();
+                    await executeSaleSave(mermasAcumuladas);
+                    setMermasAcumuladas({});
                   }
                 }}
                 className="w-full bg-emerald-500 text-white font-black py-4 rounded-xl text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
@@ -562,8 +572,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                     };
                     await dbService.put('products', updatedProduct);
                     
-                    // Registrar movimiento de merma (aunque el stock ya se ajustó en executeSaleSave, 
-                    // aquí estamos marcando la diferencia como merma específicamente)
+                    // Registrar movimiento de merma
                     await dbService.put('movements', {
                       id: crypto.randomUUID(),
                       date: new Date().toISOString(),
@@ -571,11 +580,15 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                       productName: product.name,
                       type: 'merma',
                       quantity: -showMermaPrompt.diff,
-                      stockAfter: product.stock, // El stock ya fue ajustado
+                      stockAfter: product.stock,
                       relatedId: editingSale?.id
                     });
 
-                    setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+                    // Acumular para que executeSaleSave sepa que no debe restaurar esto al stock
+                    setMermasAcumuladas(prev => ({
+                      ...prev,
+                      [product.id]: (prev[product.id] || 0) + showMermaPrompt.diff
+                    }));
                   }
                   
                   const nextQueue = mermaQueue.slice(1);
@@ -583,8 +596,10 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                   if (nextQueue.length > 0) {
                     setShowMermaPrompt(nextQueue[0]);
                   } else {
+                    const finalMermas = { ...mermasAcumuladas, [showMermaPrompt.productId]: (mermasAcumuladas[showMermaPrompt.productId] || 0) + showMermaPrompt.diff };
                     setShowMermaPrompt(null);
-                    await executeSaleSave();
+                    await executeSaleSave(finalMermas);
+                    setMermasAcumuladas({});
                   }
                 }}
                 className="w-full bg-rose-500 text-white font-black py-4 rounded-xl text-[10px] uppercase tracking-widest shadow-lg shadow-rose-500/20 active:scale-95 transition-all"
@@ -595,6 +610,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                 onClick={() => {
                   setShowMermaPrompt(null);
                   setMermaQueue([]);
+                  setMermasAcumuladas({});
                 }}
                 className="w-full py-3 text-slate-500 font-black uppercase text-[9px] tracking-widest"
               >

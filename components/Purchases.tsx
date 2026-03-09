@@ -85,7 +85,8 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
         paidAmountUSD: isCredit ? initialPayment : finalTotal
       };
 
-      let currentProducts = [...products];
+      const freshProducts = await dbService.getAll<Product>('products');
+      let currentProducts = [...freshProducts];
       
       // Si es una edición, primero restauramos el stock original en nuestra copia local
       if (editingPurchase) {
