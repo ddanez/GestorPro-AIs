@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Plus, Search, Tag, UserPlus, ShoppingCart, Trash2, X, CheckCircle2, MessageCircle, UserPlus2, PackageSearch, CreditCard, Loader2, Edit2, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Tag, UserPlus, ShoppingCart, Trash2, X, CheckCircle2, MessageCircle, UserPlus2, PackageSearch, CreditCard, Loader2, Edit2, AlertTriangle, Filter, Calendar, User as UserIcon, History } from 'lucide-react';
 import { Sale, Customer, Product, AppSettings, SaleItem, CompanyInfo, Seller } from '../types';
 import { dbService } from '../db';
 import { parseNumber, searchMatch } from '../utils';
@@ -35,6 +35,12 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
   const [mermaQueue, setMermaQueue] = useState<{ productId: string, diff: number, originalQty: number }[]>([]);
   const [showMermaPrompt, setShowMermaPrompt] = useState<{ productId: string, diff: number, originalQty: number } | null>(null);
   const [mermasAcumuladas, setMermasAcumuladas] = useState<Record<string, number>>({});
+
+  // Estados para filtros
+  const [filterType, setFilterType] = useState<'last' | 'date' | 'customer'>('last');
+  const [filterDate, setFilterDate] = useState('');
+  const [filterCustomerId, setFilterCustomerId] = useState('');
+  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
 
   // Estados para condiciones comerciales
   const [isCredit, setIsCredit] = useState(false);
@@ -237,16 +243,111 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
     });
   }, [products, searchTerm, selectedCategory]);
 
+  const filteredSales = useMemo(() => {
+    let result = [...sales];
+
+    if (filterType === 'date' && filterDate) {
+      result = result.filter(s => s.date.startsWith(filterDate));
+    } else if (filterType === 'customer' && filterCustomerId) {
+      result = result.filter(s => s.customerId === filterCustomerId);
+    }
+
+    // "Últimos movimientos" es el orden natural (descendente por fecha)
+    // que ya viene de App.tsx, pero nos aseguramos aquí.
+    return result.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [sales, filterType, filterDate, filterCustomerId]);
+
   return (
-    <div className="space-y-4 animate-in fade-in duration-500">
-      <div className="flex justify-end">
-        <button onClick={() => setIsModalOpen(true)} className="w-full md:w-auto bg-gradient-to-r from-orange-500 to-orange-600 hover:scale-105 text-white font-black py-4 px-10 rounded-2xl flex items-center justify-center gap-3 shadow-xl transition-all active:scale-95 text-xs tracking-widest uppercase">
-          <Plus size={20} /> INICIAR FACTURACIÓN
-        </button>
+    <div className="space-y-4 animate-in fade-in duration-500 pb-20">
+      {/* Botón Flotante */}
+      <button 
+        onClick={() => setIsModalOpen(true)} 
+        className="fixed bottom-8 right-6 z-[100] bg-gradient-to-r from-orange-500 to-orange-600 hover:scale-110 text-white p-5 rounded-full shadow-2xl transition-all active:scale-95 flex items-center justify-center group border-2 border-white/10"
+      >
+        <Plus size={28} />
+        <span className="absolute right-full mr-3 bg-[#1e293b] text-white text-[10px] font-black py-2 px-4 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-slate-700 shadow-xl uppercase tracking-widest pointer-events-none">
+          Iniciar Facturación
+        </span>
+      </button>
+
+      <div className="flex justify-between items-center">
+        <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">Historial de Ventas</h2>
+        <div className="relative">
+          <button 
+            onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all text-[10px] font-black uppercase tracking-widest ${isFilterMenuOpen || filterType !== 'last' ? 'bg-orange-500 border-orange-400 text-white shadow-lg' : 'bg-[#1e293b] border-slate-700 text-slate-400 hover:border-slate-500'}`}
+          >
+            <Filter size={14} />
+            <span>Filtrar</span>
+          </button>
+
+          {isFilterMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-[110]" onClick={() => setIsFilterMenuOpen(false)} />
+              <div className="absolute right-0 mt-2 w-64 bg-[#1e293b] border border-slate-700 rounded-2xl shadow-2xl z-[120] p-4 animate-in zoom-in-95 origin-top-right">
+                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-3 ml-1">Opciones de Filtro</p>
+                <div className="space-y-2">
+                  <button 
+                    onClick={() => { setFilterType('last'); setIsFilterMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filterType === 'last' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                  >
+                    <History size={14} />
+                    Últimos Movimientos
+                  </button>
+                  
+                  <div className="space-y-1">
+                    <button 
+                      onClick={() => setFilterType('date')}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filterType === 'date' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                    >
+                      <Calendar size={14} />
+                      Por Fecha
+                    </button>
+                    {filterType === 'date' && (
+                      <input 
+                        type="date" 
+                        value={filterDate} 
+                        onChange={(e) => setFilterDate(e.target.value)}
+                        className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-2 text-[10px] font-black text-white outline-none mt-1"
+                      />
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <button 
+                      onClick={() => setFilterType('customer')}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filterType === 'customer' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                    >
+                      <UserIcon size={14} />
+                      Por Cliente
+                    </button>
+                    {filterType === 'customer' && (
+                      <select 
+                        value={filterCustomerId} 
+                        onChange={(e) => setFilterCustomerId(e.target.value)}
+                        className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-2 text-[10px] font-black text-white outline-none mt-1"
+                      >
+                        <option value="">Seleccionar Cliente...</option>
+                        {customers.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3">
-        {sales.map(sale => (
+        {filteredSales.length === 0 ? (
+          <div className="py-20 text-center opacity-30">
+            <History size={48} className="mx-auto text-slate-500 mb-3" />
+            <p className="text-[10px] font-black uppercase tracking-widest">No se encontraron ventas</p>
+          </div>
+        ) : filteredSales.map(sale => (
           <div key={sale.id} className="bg-[#1e293b] p-4 rounded-2xl border border-slate-700 shadow-lg flex justify-between items-center gap-4 hover:border-orange-500/30 transition-all">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${sale.status === 'paid' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
