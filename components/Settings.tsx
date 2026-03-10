@@ -19,7 +19,9 @@ import {
   Fingerprint,
   Share2,
   Cloud,
-  Sparkles
+  Sparkles,
+  Brain,
+  Key
 } from 'lucide-react';
 import { CompanyInfo, AppSettings, User as UserType } from '../types';
 import { dbService } from '../db';
@@ -118,7 +120,11 @@ const Settings: React.FC<Props> = ({ company, setCompany, settings, setSettings,
     const newSettings: AppSettings = {
       ...settings,
       exchangeRate: parseNumber(formData.get('exchangeRate') as string) || settings.exchangeRate,
-      geminiApiKey: formData.get('geminiApiKey') as string
+      aiProvider: formData.get('aiProvider') as 'gemini' | 'deepseek',
+      geminiApiKey: formData.get('geminiApiKey') as string,
+      geminiModel: formData.get('geminiModel') as string,
+      deepseekApiKey: formData.get('deepseekApiKey') as string,
+      deepseekModel: formData.get('deepseekModel') as string
     };
 
     setCompany(newCompany);
@@ -488,33 +494,106 @@ const Settings: React.FC<Props> = ({ company, setCompany, settings, setSettings,
               </button>
             </section>
 
-            {/* Inteligencia Artificial (Gemini) */}
+            {/* Inteligencia Artificial (Gemini & DeepSeek) */}
             <section className="bg-[#1e293b] p-6 rounded-[2.5rem] border border-slate-700 shadow-xl space-y-5">
               <h2 className="text-xs font-black uppercase tracking-widest text-amber-400 flex items-center gap-2">
-                <Sparkles size={16} /> Inteligencia Artificial (Gemini)
+                <Sparkles size={16} /> Inteligencia Artificial
               </h2>
-              <div className="space-y-4">
+              
+              <div className="space-y-6">
                 <p className="text-[9px] font-bold text-slate-400 uppercase leading-relaxed tracking-tight">
-                  SI USAS LA APP FUERA DE AI STUDIO (COMO EN TU CELULAR), DEBES CONFIGURAR TU PROPIA LLAVE DE API PARA QUE EL ANÁLISIS INTELIGENTE FUNCIONE.
+                  CONFIGURA TU PROPIA LLAVE DE API PARA QUE EL ANÁLISIS INTELIGENTE FUNCIONE FUERA DE AI STUDIO.
                 </p>
-                <div className="space-y-1">
-                  <label className="text-[8px] font-black text-slate-500 uppercase ml-2">Gemini API Key</label>
-                  <input 
-                    name="geminiApiKey" 
-                    type="password"
-                    defaultValue={settings.geminiApiKey} 
-                    placeholder="Pega tu llave aquí..."
-                    className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 text-xs font-bold outline-none focus:border-amber-500/50" 
-                  />
+
+                <div className="space-y-2">
+                  <label className="text-[8px] font-black text-slate-500 uppercase ml-2">Proveedor de IA Activo</label>
+                  <select 
+                    name="aiProvider" 
+                    defaultValue={settings.aiProvider || "gemini"}
+                    className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-4 text-xs font-bold outline-none focus:border-amber-500/50 text-white"
+                  >
+                    <option value="gemini">Google Gemini</option>
+                    <option value="deepseek">DeepSeek AI</option>
+                  </select>
                 </div>
-                <a 
-                  href="https://aistudio.google.com/app/apikey" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="block text-center text-[8px] font-black text-amber-500 hover:text-amber-400 uppercase tracking-widest underline"
-                >
-                  Obtener llave gratis en Google AI Studio
-                </a>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Gemini Config */}
+                  <div className="p-4 bg-slate-900/50 rounded-2xl border border-slate-700/50 space-y-4">
+                    <h3 className="text-[10px] font-black text-blue-400 uppercase flex items-center gap-2">
+                      <Brain size={14} /> Google Gemini
+                    </h3>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-500 uppercase ml-2">Gemini API Key</label>
+                      <input 
+                        name="geminiApiKey" 
+                        type="password"
+                        defaultValue={settings.geminiApiKey} 
+                        placeholder="Pega tu llave aquí..."
+                        className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-3 text-xs font-bold outline-none focus:border-blue-500/50" 
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-500 uppercase ml-2">Modelo</label>
+                      <select 
+                        name="geminiModel" 
+                        defaultValue={settings.geminiModel || "gemini-3-flash-preview"}
+                        className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-3 text-xs font-bold outline-none focus:border-blue-500/50 text-white"
+                      >
+                        <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+                        <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
+                        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* DeepSeek Config */}
+                  <div className="p-4 bg-slate-900/50 rounded-2xl border border-slate-700/50 space-y-4">
+                    <h3 className="text-[10px] font-black text-slate-200 uppercase flex items-center gap-2">
+                      <Brain size={14} /> DeepSeek AI
+                    </h3>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-500 uppercase ml-2">DeepSeek API Key</label>
+                      <input 
+                        name="deepseekApiKey" 
+                        type="password"
+                        defaultValue={settings.deepseekApiKey} 
+                        placeholder="sk-..."
+                        className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-3 text-xs font-bold outline-none focus:border-slate-400/50" 
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-500 uppercase ml-2">Modelo</label>
+                      <select 
+                        name="deepseekModel" 
+                        defaultValue={settings.deepseekModel || "deepseek-chat"}
+                        className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-3 text-xs font-bold outline-none focus:border-slate-400/50 text-white"
+                      >
+                        <option value="deepseek-chat">DeepSeek Chat (V3)</option>
+                        <option value="deepseek-reasoner">DeepSeek Reasoner (R1)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <a 
+                    href="https://aistudio.google.com/app/apikey" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-[8px] font-black text-blue-500 hover:text-blue-400 uppercase tracking-widest underline"
+                  >
+                    Obtener Gemini Key Gratis
+                  </a>
+                  <a 
+                    href="https://platform.deepseek.com/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-[8px] font-black text-slate-400 hover:text-slate-300 uppercase tracking-widest underline"
+                  >
+                    Obtener DeepSeek Key
+                  </a>
+                </div>
               </div>
             </section>
 

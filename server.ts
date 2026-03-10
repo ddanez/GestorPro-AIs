@@ -10,6 +10,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { GoogleGenAI } from "@google/genai";
+import OpenAI from "openai";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -282,96 +283,134 @@ app.delete('/api/:store/:id', authenticateToken, (req: any, res: any) => {
   });
 });
 
-// --- API: GEMINI ANALYSIS ---
+// --- API: AI ANALYSIS ---
 
-app.post('/api/gemini/analyze', authenticateToken, async (req: any, res: any) => {
+app.post('/api/ai/analyze', authenticateToken, async (req: any, res: any) => {
   const { prompt, data } = req.body;
   
   if (!prompt) {
     return res.status(400).json({ message: 'Prompt es requerido' });
   }
 
-  let apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.VITE_GEMINI_API_KEY;
+  let aiProvider = 'gemini';
+  let geminiApiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.VITE_GEMINI_API_KEY;
+  let geminiModel = "gemini-3-flash-preview";
+  let deepseekApiKey = process.env.DEEPSEEK_API_KEY;
+  let deepseekModel = "deepseek-chat";
   
-  // If not in environment, check the database
-  if (!apiKey) {
-    try {
-      const settingsRow: any = await new Promise((resolve, reject) => {
-        db.get("SELECT data FROM settings WHERE id = 'app_settings'", (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
-        });
-      });
-
-      if (settingsRow && settingsRow.data) {
-        const settings = JSON.parse(settingsRow.data);
-        if (settings.geminiApiKey) {
-          apiKey = settings.geminiApiKey;
-          console.log('🔑 Usando Gemini API Key desde la base de datos');
-        }
-      }
-    } catch (dbErr) {
-      console.error('⚠️ Error al buscar API Key en la DB:', dbErr);
-    }
-  }
-
-  if (!apiKey) {
-    console.error('❌ Error: GEMINI_API_KEY no configurada');
-    return res.status(500).json({ 
-      message: 'La llave de Gemini no está configurada. Por favor, ve a AJUSTES y configura tu llave de API de Gemini.' 
-    });
-  }
-
+  // Fetch settings from database
   try {
-    const ai = new GoogleGenAI({ apiKey });
-    
-    // Implementación de reintentos para manejar errores 503 (Alta demanda)
-    let response;
-    let attempts = 0;
-    const maxAttempts = 3;
-    const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+    const settingsRow: any = await new Promise((resolve, reject) => {
+      db.get("SELECT data FROM settings WHERE id = 'app_settings'", (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
 
-    while (attempts < maxAttempts) {
-      try {
-        const model = ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: `${prompt}\n\nDATOS PARA ANALIZAR:\n${JSON.stringify(data || {}, null, 2)}`,
-          config: {
-            temperature: 0.7,
-            topP: 0.95,
-            topK: 64,
-          }
-        });
-        response = await model;
-        break; // Éxito, salir del bucle
-      } catch (error: any) {
-        attempts++;
-        // Si es un error 503 y tenemos intentos restantes, esperamos y reintentamos
-        if (error.status === 503 && attempts < maxAttempts) {
-          console.warn(`⚠️ Gemini está saturado (Intento ${attempts}/${maxAttempts}). Reintentando en ${attempts * 2}s...`);
-          await delay(attempts * 2000); // Espera exponencial: 2s, 4s
-          continue;
-        }
-        throw error; // Si no es 503 o no hay más intentos, lanzamos el error
-      }
+    if (settingsRow && settingsRow.data) {
+      const settings = JSON.parse(settingsRow.data);
+      if (settings.aiProvider) aiProvider = settings.aiProvider;
+      
+      if (settings.geminiApiKey) geminiApiKey = settings.geminiApiKey;
+      if (settings.geminiModel) geminiModel = settings.geminiModel;
+      
+      if (settings.deepseekApiKey) deepseekApiKey = settings.deepseekApiKey;
+      if (settings.deepseekModel) deepseekModel = settings.deepseekModel;
     }
+  } catch (dbErr) {
+    console.error('⚠️ Error al buscar configuración en la DB:', dbErr);
+  }
 
-    if (!response) throw new Error('No se recibió respuesta de Gemini');
-    res.json({ text: response.text });
-  } catch (error: any) {
-    console.error('❌ Error en análisis de Gemini:', error);
-    
-    // Mensaje amigable para saturación del servicio
-    if (error.status === 503 || (error.message && error.message.includes("high demand"))) {
-      return res.status(503).json({ 
-        message: 'El servicio de Inteligencia Artificial está experimentando una alta demanda en este momento. Por favor, espera unos segundos e intenta de nuevo.' 
+  if (aiProvider === 'deepseek') {
+    if (!deepseekApiKey) {
+      return res.status(500).json({ 
+        message: 'La llave de DeepSeek no está configurada. Por favor, ve a AJUSTES y configúrala.' 
       });
     }
 
-    res.status(500).json({ 
-      message: 'Error al procesar el análisis con la IA: ' + (error.message || 'Error desconocido')
-    });
+    try {
+      const openai = new OpenAI({
+        apiKey: deepseekApiKey,
+        baseURL: "https://api.deepseek.com",
+      });
+
+      const response = await openai.chat.completions.create({
+        model: deepseekModel,
+        messages: [
+          { role: "system", content: "Eres un experto analista financiero y de inventarios para pequeños negocios." },
+          { role: "user", content: `${prompt}\n\nDATOS PARA ANALIZAR:\n${JSON.stringify(data || {}, null, 2)}` }
+        ],
+        temperature: 0.7,
+      });
+
+      res.json({ text: response.choices[0].message.content });
+    } catch (error: any) {
+      console.error('❌ Error en análisis de DeepSeek:', error);
+      res.status(500).json({ 
+        message: 'Error al procesar el análisis con DeepSeek: ' + (error.message || 'Error desconocido')
+      });
+    }
+  } else {
+    // Default to Gemini
+    if (!geminiApiKey) {
+      return res.status(500).json({ 
+        message: 'La llave de Gemini no está configurada. Por favor, ve a AJUSTES y configúrala.' 
+      });
+    }
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+      
+      let response;
+      let attempts = 0;
+      const maxAttempts = 3;
+      const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+      while (attempts < maxAttempts) {
+        try {
+          const model = ai.models.generateContent({
+            model: geminiModel,
+            contents: `${prompt}\n\nDATOS PARA ANALIZAR:\n${JSON.stringify(data || {}, null, 2)}`,
+            config: {
+              temperature: 0.7,
+              topP: 0.95,
+              topK: 64,
+            }
+          });
+          response = await model;
+          break;
+        } catch (error: any) {
+          attempts++;
+          if (error.status === 503 && attempts < maxAttempts) {
+            console.warn(`⚠️ Gemini está saturado (Intento ${attempts}/${maxAttempts}). Reintentando en ${attempts * 2}s...`);
+            await delay(attempts * 2000);
+            continue;
+          }
+          throw error;
+        }
+      }
+
+      if (!response) throw new Error('No se recibió respuesta de Gemini');
+      res.json({ text: response.text });
+    } catch (error: any) {
+      console.error('❌ Error en análisis de Gemini:', error);
+      if (error.status === 503 || (error.message && error.message.includes("high demand"))) {
+        return res.status(503).json({ 
+          message: 'El servicio de Inteligencia Artificial está experimentando una alta demanda. Por favor, intenta de nuevo en unos segundos.' 
+        });
+      }
+      res.status(500).json({ 
+        message: 'Error al procesar el análisis con la IA: ' + (error.message || 'Error desconocido')
+      });
+    }
   }
+});
+
+// Deprecated endpoint for backward compatibility
+app.post('/api/gemini/analyze', authenticateToken, async (req: any, res: any) => {
+  console.log('⚠️ Redirigiendo petición de /api/gemini/analyze a /api/ai/analyze');
+  req.url = '/api/ai/analyze';
+  return app._router.handle(req, res, () => {});
 });
 
 // --- API: 404 HANDLER ---

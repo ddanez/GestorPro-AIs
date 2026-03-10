@@ -24,7 +24,7 @@ export const analyzeFinancialData = async (data: any) => {
 
   try {
     console.log("🤖 Solicitando análisis al servidor...");
-    const response = await fetch('/api/gemini/analyze', {
+    const response = await fetch('/api/ai/analyze', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
