@@ -3,17 +3,23 @@ import React, { useState } from 'react';
 import { Sparkles, BrainCircuit, Loader2, TrendingUp, AlertTriangle, Lightbulb } from 'lucide-react';
 import { analyzeFinancialData } from '../geminiService';
 import Markdown from 'react-markdown';
+import { AppSettings } from '../types';
 
 interface Props {
   sales: any[];
   purchases: any[];
   expenses: any[];
   products: any[];
+  settings: AppSettings;
 }
 
-const AIAnalysis: React.FC<Props> = ({ sales, purchases, expenses, products }) => {
+const AIAnalysis: React.FC<Props> = ({ sales, purchases, expenses, products, settings }) => {
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const providerName = settings.aiProvider === 'deepseek' ? 'DeepSeek' : settings.aiProvider === 'openai' ? 'OpenAI' : 'Gemini';
+  const providerColor = settings.aiProvider === 'deepseek' ? 'text-slate-200' : settings.aiProvider === 'openai' ? 'text-emerald-400' : 'text-amber-400';
+  const buttonGradient = settings.aiProvider === 'deepseek' ? 'from-slate-700 to-slate-900' : settings.aiProvider === 'openai' ? 'from-emerald-500 to-teal-600' : 'from-indigo-500 to-purple-600';
 
   const handleAnalyze = async () => {
     setLoading(true);
@@ -41,12 +47,12 @@ const AIAnalysis: React.FC<Props> = ({ sales, purchases, expenses, products }) =
     <div className="bg-[#1e293b] p-8 rounded-3xl border border-slate-700 shadow-xl space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold flex items-center gap-2">
-          <Sparkles className="text-amber-400 animate-pulse" /> Análisis Inteligente Gemini
+          <Sparkles className={`${providerColor} animate-pulse`} /> Análisis Inteligente {providerName}
         </h2>
         {!analysis && !loading && (
           <button 
             onClick={handleAnalyze}
-            className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-xs font-bold py-2 px-4 rounded-full flex items-center gap-2 transition-all transform hover:scale-105"
+            className={`bg-gradient-to-r ${buttonGradient} hover:opacity-90 text-white text-xs font-bold py-2 px-4 rounded-full flex items-center gap-2 transition-all transform hover:scale-105`}
           >
             <BrainCircuit size={16} /> Generar Análisis
           </button>
@@ -56,7 +62,7 @@ const AIAnalysis: React.FC<Props> = ({ sales, purchases, expenses, products }) =
       {loading && (
         <div className="flex flex-col items-center justify-center py-12 space-y-4">
           <Loader2 className="text-indigo-500 animate-spin" size={48} />
-          <p className="text-slate-400 animate-pulse">Gemini está analizando tus finanzas...</p>
+          <p className="text-slate-400 animate-pulse">{providerName} está analizando tus finanzas...</p>
         </div>
       )}
 
@@ -74,13 +80,13 @@ const AIAnalysis: React.FC<Props> = ({ sales, purchases, expenses, products }) =
               Nuevo análisis
             </button>
             
-            {analysis.includes("configura tu llave de API de Gemini") && (
+            {(analysis.includes("configura tu llave") || analysis.includes("no está configurada")) && (
               <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">
                 ⚠️ VE A LA PESTAÑA DE "AJUSTES" PARA CONFIGURAR TU LLAVE.
               </p>
             )}
 
-            {analysis.includes("alta demanda") && (
+            {(analysis.includes("alta demanda") || analysis.includes("saturalo") || analysis.includes("saturado")) && (
               <div className="flex flex-col gap-2">
                 <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">
                   ⚠️ EL SERVICIO ESTÁ SATURADO TEMPORALMENTE.
@@ -91,6 +97,22 @@ const AIAnalysis: React.FC<Props> = ({ sales, purchases, expenses, products }) =
                 >
                   Reintentar ahora
                 </button>
+              </div>
+            )}
+
+            {analysis.includes("Insufficient Balance") && (
+              <div className="flex flex-col gap-2">
+                <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">
+                  ⚠️ SALDO INSUFICIENTE EN TU CUENTA DE DEEPSEEK.
+                </p>
+                <a 
+                  href="https://platform.deepseek.com/top_up" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-bold py-1 px-3 rounded-full transition-all w-fit text-center"
+                >
+                  Recargar Saldo
+                </a>
               </div>
             )}
             
@@ -129,7 +151,7 @@ const AIAnalysis: React.FC<Props> = ({ sales, purchases, expenses, products }) =
             <TrendingUp className="text-slate-600" size={32} />
           </div>
           <p className="text-slate-400 text-sm max-w-xs">
-            Obtén una visión profunda de tu negocio. Gemini analizará tus ventas, stock y gastos para darte consejos estratégicos.
+            Obtén una visión profunda de tu negocio. {providerName} analizará tus ventas, stock y gastos para darte consejos estratégicos.
           </p>
         </div>
       )}

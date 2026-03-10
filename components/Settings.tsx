@@ -120,11 +120,13 @@ const Settings: React.FC<Props> = ({ company, setCompany, settings, setSettings,
     const newSettings: AppSettings = {
       ...settings,
       exchangeRate: parseNumber(formData.get('exchangeRate') as string) || settings.exchangeRate,
-      aiProvider: formData.get('aiProvider') as 'gemini' | 'deepseek',
+      aiProvider: formData.get('aiProvider') as 'gemini' | 'deepseek' | 'openai',
       geminiApiKey: formData.get('geminiApiKey') as string,
       geminiModel: formData.get('geminiModel') as string,
       deepseekApiKey: formData.get('deepseekApiKey') as string,
-      deepseekModel: formData.get('deepseekModel') as string
+      deepseekModel: formData.get('deepseekModel') as string,
+      openaiApiKey: formData.get('openaiApiKey') as string,
+      openaiModel: formData.get('openaiModel') as string
     };
 
     setCompany(newCompany);
@@ -514,6 +516,7 @@ const Settings: React.FC<Props> = ({ company, setCompany, settings, setSettings,
                   >
                     <option value="gemini">Google Gemini</option>
                     <option value="deepseek">DeepSeek AI</option>
+                    <option value="openai">OpenAI (ChatGPT)</option>
                   </select>
                 </div>
 
@@ -574,6 +577,35 @@ const Settings: React.FC<Props> = ({ company, setCompany, settings, setSettings,
                       </select>
                     </div>
                   </div>
+
+                  {/* OpenAI Config */}
+                  <div className="p-4 bg-slate-900/50 rounded-2xl border border-slate-700/50 space-y-4">
+                    <h3 className="text-[10px] font-black text-emerald-400 uppercase flex items-center gap-2">
+                      <Brain size={14} /> OpenAI
+                    </h3>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-500 uppercase ml-2">OpenAI API Key</label>
+                      <input 
+                        name="openaiApiKey" 
+                        type="password"
+                        defaultValue={settings.openaiApiKey} 
+                        placeholder="sk-..."
+                        className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-3 text-xs font-bold outline-none focus:border-emerald-500/50" 
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-500 uppercase ml-2">Modelo</label>
+                      <select 
+                        name="openaiModel" 
+                        defaultValue={settings.openaiModel || "gpt-4o-mini"}
+                        className="w-full bg-[#0f172a] border border-slate-700 rounded-2xl p-3 text-xs font-bold outline-none focus:border-emerald-500/50 text-white"
+                      >
+                        <option value="gpt-4o-mini">GPT-4o Mini (Recomendado)</option>
+                        <option value="gpt-4o">GPT-4o (Potente)</option>
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-2">
@@ -592,6 +624,14 @@ const Settings: React.FC<Props> = ({ company, setCompany, settings, setSettings,
                     className="text-[8px] font-black text-slate-400 hover:text-slate-300 uppercase tracking-widest underline"
                   >
                     Obtener DeepSeek Key
+                  </a>
+                  <a 
+                    href="https://platform.openai.com/api-keys" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-[8px] font-black text-emerald-500 hover:text-emerald-400 uppercase tracking-widest underline"
+                  >
+                    Obtener OpenAI Key
                   </a>
                 </div>
               </div>

@@ -60,7 +60,13 @@ const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, settin
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <AIAnalysis sales={sales} purchases={purchases} expenses={expenses} products={products} />
+        <AIAnalysis 
+          sales={sales} 
+          purchases={purchases} 
+          expenses={expenses} 
+          products={products} 
+          settings={settings}
+        />
         
         <div className="bg-[#1e293b] p-8 rounded-3xl border border-slate-700 shadow-xl space-y-6">
            <h2 className="text-xl font-bold flex items-center gap-2">

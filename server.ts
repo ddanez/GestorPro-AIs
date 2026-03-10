@@ -297,6 +297,8 @@ app.post('/api/ai/analyze', authenticateToken, async (req: any, res: any) => {
   let geminiModel = "gemini-3-flash-preview";
   let deepseekApiKey = process.env.DEEPSEEK_API_KEY;
   let deepseekModel = "deepseek-chat";
+  let openaiApiKey = process.env.OPENAI_API_KEY;
+  let openaiModel = "gpt-4o-mini";
   
   // Fetch settings from database
   try {
@@ -316,12 +318,43 @@ app.post('/api/ai/analyze', authenticateToken, async (req: any, res: any) => {
       
       if (settings.deepseekApiKey) deepseekApiKey = settings.deepseekApiKey;
       if (settings.deepseekModel) deepseekModel = settings.deepseekModel;
+
+      if (settings.openaiApiKey) openaiApiKey = settings.openaiApiKey;
+      if (settings.openaiModel) openaiModel = settings.openaiModel;
     }
   } catch (dbErr) {
     console.error('⚠️ Error al buscar configuración en la DB:', dbErr);
   }
 
-  if (aiProvider === 'deepseek') {
+  if (aiProvider === 'openai') {
+    if (!openaiApiKey) {
+      return res.status(500).json({ 
+        message: 'La llave de OpenAI no está configurada. Por favor, ve a AJUSTES y configúrala.' 
+      });
+    }
+
+    try {
+      const openai = new OpenAI({
+        apiKey: openaiApiKey,
+      });
+
+      const response = await openai.chat.completions.create({
+        model: openaiModel,
+        messages: [
+          { role: "system", content: "Eres un experto analista financiero y de inventarios para pequeños negocios." },
+          { role: "user", content: `${prompt}\n\nDATOS PARA ANALIZAR:\n${JSON.stringify(data || {}, null, 2)}` }
+        ],
+        temperature: 0.7,
+      });
+
+      res.json({ text: response.choices[0].message.content });
+    } catch (error: any) {
+      console.error('❌ Error en análisis de OpenAI:', error);
+      res.status(500).json({ 
+        message: 'Error al procesar el análisis con OpenAI: ' + (error.message || 'Error desconocido')
+      });
+    }
+  } else if (aiProvider === 'deepseek') {
     if (!deepseekApiKey) {
       return res.status(500).json({ 
         message: 'La llave de DeepSeek no está configurada. Por favor, ve a AJUSTES y configúrala.' 

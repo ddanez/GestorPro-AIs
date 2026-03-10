@@ -37,11 +37,13 @@ export interface AppSettings {
   includeQr: boolean;
   ticketHeader?: string;
   ticketFooter?: string;
-  aiProvider?: 'gemini' | 'deepseek';
+  aiProvider?: 'gemini' | 'deepseek' | 'openai';
   geminiApiKey?: string;
   geminiModel?: string;
   deepseekApiKey?: string;
   deepseekModel?: string;
+  openaiApiKey?: string;
+  openaiModel?: string;
 }
 
 export interface Product {
