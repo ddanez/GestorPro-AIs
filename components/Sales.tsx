@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Plus, Search, Tag, UserPlus, ShoppingCart, Trash2, X, CheckCircle2, MessageCircle, UserPlus2, PackageSearch, CreditCard, Loader2, Edit2, AlertTriangle, Filter, Calendar, User as UserIcon, History } from 'lucide-react';
+import { Plus, Search, Tag, UserPlus, ShoppingCart, Trash2, X, CheckCircle2, MessageCircle, UserPlus2, PackageSearch, CreditCard, Loader2, Edit2, AlertTriangle, Filter, Calendar, User as UserIcon, History, Wallet } from 'lucide-react';
 import { Sale, Customer, Product, AppSettings, SaleItem, CompanyInfo, Seller } from '../types';
 import { dbService } from '../db';
 import { parseNumber, searchMatch } from '../utils';
@@ -44,6 +44,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
 
   // Estados para condiciones comerciales
   const [isCredit, setIsCredit] = useState(false);
+  const [useCredit, setUseCredit] = useState(false);
   const [isDiscount, setIsDiscount] = useState(false);
   const [discountVal, setDiscountVal] = useState(0);
   const [initialPayment, setInitialPayment] = useState(0);
@@ -117,6 +118,30 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
     try {
       const customer = customers.find(c => c.id === selectedCustomerId);
       
+      // Deduct from credit balance if used
+      if (useCredit && customer && (customer.creditBalanceUSD || 0) > 0) {
+        const creditUsed = Math.min(customer.creditBalanceUSD || 0, finalTotal);
+        const updatedCustomer = {
+          ...customer,
+          creditBalanceUSD: (customer.creditBalanceUSD || 0) - creditUsed
+        };
+        await dbService.put('customers', updatedCustomer);
+        setCustomers(prev => prev.map(c => c.id === customer.id ? updatedCustomer : c));
+      }
+
+      // If overpaid, add to credit balance
+      if (!isCredit && initialPayment > finalTotal) {
+        const surplus = initialPayment - finalTotal;
+        if (customer) {
+          const updatedCustomer = {
+            ...customer,
+            creditBalanceUSD: (customer.creditBalanceUSD || 0) + surplus
+          };
+          await dbService.put('customers', updatedCustomer);
+          setCustomers(prev => prev.map(c => c.id === customer.id ? updatedCustomer : c));
+        }
+      }
+
       const newSale: Sale = {
         id: editingSale?.id || crypto.randomUUID(),
         date: editingSale?.date || new Date().toISOString(),
@@ -129,7 +154,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
         status: isCredit ? 'pending' : 'paid',
         discountUSD: isDiscount ? discountVal : 0,
         initialPaymentUSD: isCredit ? initialPayment : finalTotal,
-        paidAmountUSD: isCredit ? initialPayment : finalTotal,
+        paidAmountUSD: isCredit ? initialPayment : (useCredit ? Math.min(finalTotal, (customer?.creditBalanceUSD || 0) + initialPayment) : finalTotal),
       };
 
       // Obtener productos frescos de la DB para evitar problemas de estado asíncrono
@@ -582,6 +607,24 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                            </div>
                         )}
                      </div>
+
+                     {/* Saldo a Favor */}
+                     {selectedCustomerId && (customers.find(c => c.id === selectedCustomerId)?.creditBalanceUSD || 0) > 0 && (
+                       <div className="bg-[#0f172a] p-3 rounded-2xl border border-slate-700/50">
+                          <div className="flex items-center justify-between mb-2">
+                             <div className="flex items-center gap-2">
+                                <Wallet size={16} className={useCredit ? "text-emerald-500" : "text-slate-500"} />
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] font-black text-white uppercase tracking-widest">Usar Saldo a Favor</span>
+                                  <span className="text-[8px] font-black text-emerald-500 uppercase">Disponible: ${customers.find(c => c.id === selectedCustomerId)?.creditBalanceUSD?.toFixed(2)}</span>
+                                </div>
+                             </div>
+                             <button onClick={() => setUseCredit(!useCredit)} className={`w-10 h-5 rounded-full relative transition-all ${useCredit ? 'bg-emerald-500' : 'bg-slate-700'}`}>
+                                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${useCredit ? 'left-6' : 'left-1'}`} />
+                             </button>
+                          </div>
+                       </div>
+                     )}
                   </div>
                </div>
 

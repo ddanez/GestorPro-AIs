@@ -76,6 +76,7 @@ export interface Customer {
   phone: string;
   email: string;
   address?: string;
+  creditBalanceUSD?: number;
 }
 
 export interface Supplier {
@@ -83,6 +84,7 @@ export interface Supplier {
   name: string;
   rif: string;
   phone: string;
+  creditBalanceUSD?: number;
 }
 
 export interface Seller {
