@@ -35,6 +35,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
   const [mermaQueue, setMermaQueue] = useState<{ productId: string, diff: number, originalQty: number }[]>([]);
   const [showMermaPrompt, setShowMermaPrompt] = useState<{ productId: string, diff: number, originalQty: number } | null>(null);
   const [mermasAcumuladas, setMermasAcumuladas] = useState<Record<string, number>>({});
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
 
   // Estados para filtros
   const [filterType, setFilterType] = useState<'last' | 'date' | 'customer'>('last');
@@ -282,6 +283,16 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
     return result.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [sales, filterType, filterDate, filterCustomerId]);
 
+  const sortedAndFilteredCustomers = useMemo(() => {
+    return [...customers]
+      .filter(c => searchMatch(c.name, customerSearchTerm))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [customers, customerSearchTerm]);
+
+  const sortedCustomers = useMemo(() => {
+    return [...customers].sort((a, b) => a.name.localeCompare(b.name));
+  }, [customers]);
+
   return (
     <div className="space-y-4 animate-in fade-in duration-500 pb-20">
       {/* Botón Flotante */}
@@ -353,7 +364,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                         className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-2 text-[10px] font-black text-white outline-none mt-1"
                       >
                         <option value="">Seleccionar Cliente...</option>
-                        {customers.map(c => (
+                        {sortedCustomers.map(c => (
                           <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
                       </select>
@@ -485,10 +496,20 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                <div className="space-y-4 mb-6 shrink-0">
                   <div className="space-y-1">
                     <label className="text-[8px] font-black text-slate-500 uppercase ml-1 tracking-widest">Cliente</label>
+                    <div className="relative mb-2">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                      <input 
+                        type="text" 
+                        placeholder="Filtrar cliente..." 
+                        className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-2 pl-9 text-[10px] font-bold text-white outline-none focus:border-orange-500 transition-all" 
+                        value={customerSearchTerm} 
+                        onChange={(e) => setCustomerSearchTerm(e.target.value)} 
+                      />
+                    </div>
                     <div className="flex gap-2">
                        <select className="flex-1 bg-[#0f172a] border border-slate-700 rounded-xl p-3 text-xs font-bold text-white outline-none" value={selectedCustomerId} onChange={(e) => setSelectedCustomerId(e.target.value)}>
                           <option value="">ELIJA CLIENTE...</option>
-                          {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          {sortedAndFilteredCustomers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                        </select>
                        <button onClick={() => setIsNewCustomerModalOpen(true)} className="p-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors"><UserPlus2 size={18} /></button>
                     </div>
