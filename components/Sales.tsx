@@ -289,6 +289,13 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [customers, customerSearchTerm]);
 
+  // Auto-seleccionar si solo hay un resultado al filtrar
+  React.useEffect(() => {
+    if (customerSearchTerm && sortedAndFilteredCustomers.length === 1) {
+      setSelectedCustomerId(sortedAndFilteredCustomers[0].id);
+    }
+  }, [customerSearchTerm, sortedAndFilteredCustomers]);
+
   const sortedCustomers = useMemo(() => {
     return [...customers].sort((a, b) => a.name.localeCompare(b.name));
   }, [customers]);
@@ -297,7 +304,10 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
     <div className="space-y-4 animate-in fade-in duration-500 pb-20">
       {/* Botón Flotante */}
       <button 
-        onClick={() => setIsModalOpen(true)} 
+        onClick={() => {
+          setIsModalOpen(true);
+          setCustomerSearchTerm('');
+        }} 
         className="fixed bottom-8 right-6 z-[100] bg-gradient-to-r from-orange-500 to-orange-600 hover:scale-110 text-white p-5 rounded-full shadow-2xl transition-all active:scale-95 flex items-center justify-center group border-2 border-white/10"
       >
         <Plus size={28} />
@@ -407,6 +417,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                 setIsDiscount((sale.discountUSD || 0) > 0);
                 setDiscountVal(sale.discountUSD || 0);
                 setInitialPayment(sale.initialPaymentUSD || 0);
+                setCustomerSearchTerm('');
                 setIsModalOpen(true);
               }} className="p-2 bg-slate-800 rounded-lg border border-slate-700 text-slate-400 transition-colors hover:bg-slate-700 hover:text-white">
                 <Edit2 size={16}/>

@@ -12,7 +12,8 @@ export const parseNumber = (value: any): number => {
 
 export const searchMatch = (text: string, query: string): boolean => {
   if (!query) return true;
-  const keywords = query.toLowerCase().split(' ').filter(k => k.length > 0);
-  const target = text.toLowerCase();
+  const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const keywords = normalize(query).split(' ').filter(k => k.length > 0);
+  const target = normalize(text);
   return keywords.every(k => target.includes(k));
 };
