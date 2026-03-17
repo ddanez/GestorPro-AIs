@@ -245,7 +245,7 @@ export const TicketModal: React.FC<Props> = ({ isOpen, onClose, data, company, s
                  <div className="space-y-1">
                     <p className="uppercase font-black text-[12px] leading-none">{company.bank || 'BANCO DE VENEZUELA'}</p>
                     <p className="font-black text-[14px] leading-none">{company.mobilePhone || 'N/A'}</p>
-                    <p className="font-black text-[12px] leading-none">V-{(company.rif || '').replace(/\D/g, '')}</p>
+                    <p className="font-black text-[12px] leading-none">V-{(company.dni || '').replace(/\D/g, '')}</p>
                  </div>
               </div>
            </div>
