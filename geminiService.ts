@@ -11,11 +11,24 @@ export const analyzeFinancialData = async (data: any) => {
     Analiza los siguientes datos financieros de un negocio llamado "D'Danez Gestor Pro".
     Los datos incluyen ventas, compras de inventario (costo de inversión) y gastos operativos (alquiler, servicios, etc.).
     
+    ${data.periodo ? `
+    IMPORTANTE: El análisis debe enfocarse en el PERIODO DE TIEMPO seleccionado:
+    - Desde: ${data.periodo.desde}
+    - Hasta: ${data.periodo.hasta}
+    
+    Datos del periodo:
+    - Ventas totales: ${data.resumen.totalVentas} ($${data.resumen.ingresosUSD.toFixed(2)})
+    - Compras totales: ${data.resumen.totalCompras} ($${data.resumen.costoInversionUSD.toFixed(2)})
+    - Gastos operativos: ${data.resumen.totalGastosOperativos} ($${data.resumen.gastosOperativosUSD.toFixed(2)})
+    
+    Por favor, proporciona un análisis detallado de la rentabilidad y el rendimiento del negocio específicamente para este rango de fechas.
+    ` : `
     Proporciona:
     1. Un resumen ejecutivo del estado financiero actual.
     2. Análisis de rentabilidad (Ingresos vs Egresos Totales).
     3. Identificación de tendencias en ventas y gastos.
     4. 3 recomendaciones estratégicas para mejorar la utilidad neta.
+    `}
     
     Responde en formato Markdown, con un tono profesional pero motivador. 
     Usa emojis para resaltar puntos clave.

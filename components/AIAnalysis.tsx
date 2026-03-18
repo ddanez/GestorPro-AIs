@@ -16,6 +16,8 @@ interface Props {
 const AIAnalysis: React.FC<Props> = ({ sales, purchases, expenses, products, settings }) => {
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [fromDate, setFromDate] = useState(new Date().toISOString().split('T')[0]);
+  const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
 
   const providerName = settings.aiProvider === 'deepseek' ? 'DeepSeek' : settings.aiProvider === 'openai' ? 'OpenAI' : 'Gemini';
   const providerColor = settings.aiProvider === 'deepseek' ? 'text-slate-200' : settings.aiProvider === 'openai' ? 'text-emerald-400' : 'text-amber-400';
@@ -23,18 +25,40 @@ const AIAnalysis: React.FC<Props> = ({ sales, purchases, expenses, products, set
 
   const handleAnalyze = async () => {
     setLoading(true);
+    
+    const start = new Date(fromDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(toDate);
+    end.setHours(23, 59, 59, 999);
+
+    const filteredSales = sales.filter(s => {
+      const d = new Date(s.date);
+      return d >= start && d <= end;
+    });
+
+    const filteredPurchases = purchases.filter(p => {
+      const d = new Date(p.date);
+      return d >= start && d <= end;
+    });
+
+    const filteredExpenses = expenses.filter(e => {
+      const d = new Date(e.date);
+      return d >= start && d <= end;
+    });
+    
     const data = {
+      periodo: { desde: fromDate, hasta: toDate },
       resumen: {
-        totalVentas: sales.length,
-        totalCompras: purchases.length,
-        totalGastosOperativos: expenses.length,
+        totalVentas: filteredSales.length,
+        totalCompras: filteredPurchases.length,
+        totalGastosOperativos: filteredExpenses.length,
         totalProductos: products.length,
-        ingresosUSD: sales.reduce((sum, s) => sum + s.totalUSD, 0),
-        costoInversionUSD: purchases.reduce((sum, p) => sum + p.totalUSD, 0),
-        gastosOperativosUSD: expenses.reduce((sum, e) => sum + e.amountUSD, 0),
+        ingresosUSD: filteredSales.reduce((sum, s) => sum + s.totalUSD, 0),
+        costoInversionUSD: filteredPurchases.reduce((sum, p) => sum + p.totalUSD, 0),
+        gastosOperativosUSD: filteredExpenses.reduce((sum, e) => sum + e.amountUSD, 0),
       },
-      ventasRecientes: sales.slice(-10).map(s => ({ fecha: s.date, total: s.totalUSD })),
-      gastosRecientes: expenses.slice(-10).map(e => ({ fecha: e.date, desc: e.description, total: e.amountUSD })),
+      ventasPeriodo: filteredSales.map(s => ({ fecha: s.date, total: s.totalUSD, cliente: s.customerName })),
+      gastosPeriodo: filteredExpenses.map(e => ({ fecha: e.date, desc: e.description, total: e.amountUSD })),
       productosBajoStock: products.filter(p => p.stock <= (p.minStock || 5)).map(p => ({ nombre: p.name, stock: p.stock }))
     };
 
@@ -45,17 +69,37 @@ const AIAnalysis: React.FC<Props> = ({ sales, purchases, expenses, products, set
 
   return (
     <div className="bg-[#1e293b] p-8 rounded-3xl border border-slate-700 shadow-xl space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h2 className="text-xl font-bold flex items-center gap-2">
           <Sparkles className={`${providerColor} animate-pulse`} /> Análisis Inteligente {providerName}
         </h2>
         {!analysis && !loading && (
-          <button 
-            onClick={handleAnalyze}
-            className={`bg-gradient-to-r ${buttonGradient} hover:opacity-90 text-white text-xs font-bold py-2 px-4 rounded-full flex items-center gap-2 transition-all transform hover:scale-105`}
-          >
-            <BrainCircuit size={16} /> Generar Análisis
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 bg-[#0f172a] p-2 rounded-xl border border-slate-700">
+              <span className="text-[10px] font-bold text-slate-500 uppercase">Desde:</span>
+              <input 
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="bg-transparent text-[10px] font-bold text-white outline-none"
+              />
+            </div>
+            <div className="flex items-center gap-2 bg-[#0f172a] p-2 rounded-xl border border-slate-700">
+              <span className="text-[10px] font-bold text-slate-500 uppercase">Hasta:</span>
+              <input 
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="bg-transparent text-[10px] font-bold text-white outline-none"
+              />
+            </div>
+            <button 
+              onClick={handleAnalyze}
+              className={`bg-gradient-to-r ${buttonGradient} hover:opacity-90 text-white text-xs font-bold py-2 px-6 rounded-full flex items-center gap-2 transition-all transform hover:scale-105 shadow-lg shadow-indigo-500/20`}
+            >
+              <BrainCircuit size={16} /> Analizar Periodo
+            </button>
+          </div>
         )}
       </div>
 
