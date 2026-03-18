@@ -49,6 +49,13 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
   const [isDiscount, setIsDiscount] = useState(false);
   const [discountVal, setDiscountVal] = useState(0);
   const [initialPayment, setInitialPayment] = useState(0);
+  const [saleDate, setSaleDate] = useState(new Date().toISOString().slice(0, 16));
+
+  const getLocalISO = (dateStr?: string) => {
+    const d = dateStr ? new Date(dateStr) : new Date();
+    const offset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - offset).toISOString().slice(0, 16);
+  };
 
   // Optimización: Memoizar cálculos para evitar lag al escribir o filtrar
   const { subtotal, finalTotal } = useMemo(() => {
@@ -145,7 +152,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
 
       const newSale: Sale = {
         id: editingSale?.id || crypto.randomUUID(),
-        date: editingSale?.date || new Date().toISOString(),
+        date: new Date(saleDate).toISOString(),
         customerId: selectedCustomerId,
         customerName: customer?.name || 'Venta Rápida',
         items: cart,
@@ -182,7 +189,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
             if (qtyToRestore > 0) {
               await dbService.put('movements', {
                 id: crypto.randomUUID(),
-                date: new Date().toISOString(),
+                date: newSale.date,
                 productId: item.productId,
                 productName: item.name,
                 type: 'restoration',
@@ -208,7 +215,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
           // Registrar venta
           await dbService.put('movements', {
             id: crypto.randomUUID(),
-            date: new Date().toISOString(),
+            date: newSale.date,
             productId: item.productId,
             productName: item.name,
             type: 'sale',
@@ -307,6 +314,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
         onClick={() => {
           setIsModalOpen(true);
           setCustomerSearchTerm('');
+          setSaleDate(getLocalISO());
         }} 
         className="fixed bottom-8 right-6 z-[100] bg-gradient-to-r from-orange-500 to-orange-600 hover:scale-110 text-white p-5 rounded-full shadow-2xl transition-all active:scale-95 flex items-center justify-center group border-2 border-white/10"
       >
@@ -418,6 +426,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                 setDiscountVal(sale.discountUSD || 0);
                 setInitialPayment(sale.initialPaymentUSD || 0);
                 setCustomerSearchTerm('');
+                setSaleDate(getLocalISO(sale.date));
                 setIsModalOpen(true);
               }} className="p-2 bg-slate-800 rounded-lg border border-slate-700 text-slate-400 transition-colors hover:bg-slate-700 hover:text-white">
                 <Edit2 size={16}/>
@@ -505,6 +514,18 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
             {/* Carrito y Cobro */}
             <div className={`w-full md:w-96 bg-[#1e293b] border-l border-slate-700 p-6 shadow-2xl overflow-y-auto ${activeTab === 'cart' ? 'flex flex-col' : 'hidden md:flex md:flex-col'}`}>
                <div className="space-y-4 mb-6 shrink-0">
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-black text-slate-500 uppercase ml-1 tracking-widest">Fecha y Hora de Venta</label>
+                    <div className="relative mb-2">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                      <input 
+                        type="datetime-local" 
+                        className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-2 pl-9 text-[10px] font-bold text-white outline-none focus:border-orange-500 transition-all" 
+                        value={saleDate} 
+                        onChange={(e) => setSaleDate(e.target.value)} 
+                      />
+                    </div>
+                  </div>
                   <div className="space-y-1">
                     <label className="text-[8px] font-black text-slate-500 uppercase ml-1 tracking-widest">Cliente</label>
                     <div className="relative mb-2">
@@ -751,7 +772,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                     // Registrar movimiento de merma
                     await dbService.put('movements', {
                       id: crypto.randomUUID(),
-                      date: new Date().toISOString(),
+                      date: new Date(saleDate).toISOString(),
                       productId: product.id,
                       productName: product.name,
                       type: 'merma',
