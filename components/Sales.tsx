@@ -49,6 +49,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
   const [isDiscount, setIsDiscount] = useState(false);
   const [discountVal, setDiscountVal] = useState(0);
   const [initialPayment, setInitialPayment] = useState(0);
+  const [saleType, setSaleType] = useState<'venta' | 'obsequio' | 'consumo'>('venta');
   const [saleDate, setSaleDate] = useState(new Date().toISOString().slice(0, 16));
 
   const getLocalISO = (dateStr?: string) => {
@@ -160,6 +161,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
         totalBS: finalTotal * (settings.exchangeRate || 0),
         exchangeRate: settings.exchangeRate || 0,
         status: isCredit ? 'pending' : 'paid',
+        type: saleType,
         discountUSD: isDiscount ? discountVal : 0,
         initialPaymentUSD: isCredit ? initialPayment : finalTotal,
         paidAmountUSD: isCredit ? initialPayment : (useCredit ? Math.min(finalTotal, (customer?.creditBalanceUSD || 0) + initialPayment) : finalTotal),
@@ -425,6 +427,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                 setIsDiscount((sale.discountUSD || 0) > 0);
                 setDiscountVal(sale.discountUSD || 0);
                 setInitialPayment(sale.initialPaymentUSD || 0);
+                setSaleType(sale.type || 'venta');
                 setCustomerSearchTerm('');
                 setSaleDate(getLocalISO(sale.date));
                 setIsModalOpen(true);
@@ -514,6 +517,20 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
             {/* Carrito y Cobro */}
             <div className={`w-full md:w-96 bg-[#1e293b] border-l border-slate-700 p-6 shadow-2xl overflow-y-auto ${activeTab === 'cart' ? 'flex flex-col' : 'hidden md:flex md:flex-col'}`}>
                <div className="space-y-4 mb-6 shrink-0">
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-black text-slate-500 uppercase ml-1 tracking-widest">Tipo de Operación</label>
+                    <div className="grid grid-cols-3 gap-2 mb-2">
+                       {(['venta', 'obsequio', 'consumo'] as const).map(t => (
+                         <button 
+                           key={t}
+                           onClick={() => setSaleType(t)}
+                           className={`py-2 text-[8px] font-black uppercase tracking-widest rounded-xl border transition-all ${saleType === t ? 'bg-orange-500 border-orange-400 text-white shadow-lg' : 'bg-[#0f172a] border-slate-700 text-slate-500 hover:border-slate-500'}`}
+                         >
+                           {t}
+                         </button>
+                       ))}
+                    </div>
+                  </div>
                   <div className="space-y-1">
                     <label className="text-[8px] font-black text-slate-500 uppercase ml-1 tracking-widest">Fecha y Hora de Venta</label>
                     <div className="relative mb-2">

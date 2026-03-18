@@ -17,11 +17,15 @@ export const analyzeFinancialData = async (data: any) => {
     - Hasta: ${data.periodo.hasta}
     
     Datos del periodo:
-    - Ventas totales: ${data.resumen.totalVentas} ($${data.resumen.ingresosUSD.toFixed(2)})
+    - Ventas totales (Ventas directas): ${data.resumen.totalVentas} ($${data.resumen.ingresosUSD.toFixed(2)})
+    - Obsequios/Cortesías: ${data.resumen.totalObsequios} ($${data.resumen.obsequiosUSD.toFixed(2)})
+    - Consumo interno: ${data.resumen.totalConsumos} ($${data.resumen.consumosUSD.toFixed(2)})
+    - Merma (Pérdida de inventario): ${data.resumen.totalMerma} registros ($${data.resumen.mermaUSD.toFixed(2)})
     - Compras totales: ${data.resumen.totalCompras} ($${data.resumen.costoInversionUSD.toFixed(2)})
     - Gastos operativos: ${data.resumen.totalGastosOperativos} ($${data.resumen.gastosOperativosUSD.toFixed(2)})
     
-    Por favor, proporciona un análisis detallado de la rentabilidad y el rendimiento del negocio específicamente para este rango de fechas.
+    Por favor, proporciona un análisis detallado de la rentabilidad y el rendimiento del negocio específicamente para este rango de fechas. 
+    Asegúrate de considerar el impacto de la merma, los obsequios y el consumo interno en la utilidad neta.
     ` : `
     Proporciona:
     1. Un resumen ejecutivo del estado financiero actual.

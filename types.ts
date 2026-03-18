@@ -125,6 +125,7 @@ export interface Sale {
   totalBS: number;
   exchangeRate: number;
   status: 'paid' | 'pending';
+  type?: 'venta' | 'obsequio' | 'consumo';
   discountUSD?: number;
   initialPaymentUSD?: number;
   paidAmountUSD?: number;

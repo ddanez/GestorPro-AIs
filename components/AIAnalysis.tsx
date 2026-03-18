@@ -3,17 +3,18 @@ import React, { useState } from 'react';
 import { Sparkles, BrainCircuit, Loader2, TrendingUp, AlertTriangle, Lightbulb } from 'lucide-react';
 import { analyzeFinancialData } from '../geminiService';
 import Markdown from 'react-markdown';
-import { AppSettings } from '../types';
+import { AppSettings, Movement, Sale } from '../types';
 
 interface Props {
-  sales: any[];
+  sales: Sale[];
   purchases: any[];
   expenses: any[];
   products: any[];
   settings: AppSettings;
+  movements: Movement[];
 }
 
-const AIAnalysis: React.FC<Props> = ({ sales, purchases, expenses, products, settings }) => {
+const AIAnalysis: React.FC<Props> = ({ sales, purchases, expenses, products, settings, movements }) => {
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [fromDate, setFromDate] = useState(new Date().toISOString().split('T')[0]);
@@ -36,6 +37,11 @@ const AIAnalysis: React.FC<Props> = ({ sales, purchases, expenses, products, set
       return d >= start && d <= end;
     });
 
+    const filteredMovements = movements.filter(m => {
+      const d = new Date(m.date);
+      return d >= start && d <= end;
+    });
+
     const filteredPurchases = purchases.filter(p => {
       const d = new Date(p.date);
       return d >= start && d <= end;
@@ -49,15 +55,27 @@ const AIAnalysis: React.FC<Props> = ({ sales, purchases, expenses, products, set
     const data = {
       periodo: { desde: fromDate, hasta: toDate },
       resumen: {
-        totalVentas: filteredSales.length,
+        totalVentas: filteredSales.filter(s => !s.type || s.type === 'venta').length,
+        totalObsequios: filteredSales.filter(s => s.type === 'obsequio').length,
+        totalConsumos: filteredSales.filter(s => s.type === 'consumo').length,
+        totalMerma: filteredMovements.filter(m => m.type === 'merma').length,
         totalCompras: filteredPurchases.length,
         totalGastosOperativos: filteredExpenses.length,
         totalProductos: products.length,
-        ingresosUSD: filteredSales.reduce((sum, s) => sum + s.totalUSD, 0),
+        ingresosUSD: filteredSales.filter(s => !s.type || s.type === 'venta').reduce((sum, s) => sum + s.totalUSD, 0),
+        obsequiosUSD: filteredSales.filter(s => s.type === 'obsequio').reduce((sum, s) => sum + s.totalUSD, 0),
+        consumosUSD: filteredSales.filter(s => s.type === 'consumo').reduce((sum, s) => sum + s.totalUSD, 0),
+        mermaUSD: filteredMovements.filter(m => m.type === 'merma').reduce((sum, m) => {
+          const product = products.find(p => p.id === m.productId);
+          return sum + (Math.abs(m.quantity) * (product?.costUSD || 0));
+        }, 0),
         costoInversionUSD: filteredPurchases.reduce((sum, p) => sum + p.totalUSD, 0),
         gastosOperativosUSD: filteredExpenses.reduce((sum, e) => sum + e.amountUSD, 0),
       },
-      ventasPeriodo: filteredSales.map(s => ({ fecha: s.date, total: s.totalUSD, cliente: s.customerName })),
+      ventasPeriodo: filteredSales.filter(s => !s.type || s.type === 'venta').map(s => ({ fecha: s.date, total: s.totalUSD, cliente: s.customerName })),
+      obsequiosPeriodo: filteredSales.filter(s => s.type === 'obsequio').map(s => ({ fecha: s.date, total: s.totalUSD, cliente: s.customerName })),
+      consumosPeriodo: filteredSales.filter(s => s.type === 'consumo').map(s => ({ fecha: s.date, total: s.totalUSD, cliente: s.customerName })),
+      mermaPeriodo: filteredMovements.filter(m => m.type === 'merma').map(m => ({ fecha: m.date, producto: m.productName, cant: m.quantity })),
       gastosPeriodo: filteredExpenses.map(e => ({ fecha: e.date, desc: e.description, total: e.amountUSD })),
       productosBajoStock: products.filter(p => p.stock <= (p.minStock || 5)).map(p => ({ nombre: p.name, stock: p.stock }))
     };

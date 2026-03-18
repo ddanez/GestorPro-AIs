@@ -23,7 +23,7 @@ import {
   ChevronRight,
   X
 } from 'lucide-react';
-import { Sale, Purchase, AppSettings, Product, Expense, Customer, Supplier } from '../types';
+import { Sale, Purchase, AppSettings, Product, Expense, Customer, Supplier, Movement } from '../types';
 import AIAnalysis from './AIAnalysis';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts';
 
@@ -35,6 +35,7 @@ interface Props {
   customers: Customer[];
   suppliers: Supplier[];
   settings: AppSettings;
+  movements: Movement[];
 }
 
 type ReportType = 
@@ -52,7 +53,7 @@ type ReportType =
   | 'payment_methods' 
   | 'inventory_adjustments';
 
-const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, customers, suppliers, settings }) => {
+const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, customers, suppliers, settings, movements }) => {
   const [selectedReport, setSelectedReport] = useState<ReportType | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -444,6 +445,7 @@ const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, custom
           expenses={expenses} 
           products={products} 
           settings={settings}
+          movements={movements}
         />
         
         <div className="bg-[#1e293b] p-8 rounded-[2.5rem] border border-slate-700 shadow-xl space-y-6">
