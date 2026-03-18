@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { 
   TrendingUp, 
   CreditCard, 
@@ -10,9 +10,11 @@ import {
   DollarSign,
   PiggyBank,
   Trash2,
-  Wallet
+  Wallet,
+  Calendar,
+  ArrowRight
 } from 'lucide-react';
-import { Sale, Purchase, Product, AppSettings, Expense } from '../types';
+import { Sale, Purchase, Product, AppSettings, Expense, Movement } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface Props {
@@ -21,31 +23,47 @@ interface Props {
   expenses: Expense[];
   products: Product[];
   settings: AppSettings;
+  movements: Movement[];
 }
 
-const Dashboard: React.FC<Props> = ({ sales, purchases, expenses, products, settings }) => {
-  const today = new Date().toISOString().split('T')[0];
+const Dashboard: React.FC<Props> = ({ sales, purchases, expenses, products, settings, movements }) => {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [fromDate, setFromDate] = useState(todayStr);
+  const [toDate, setToDate] = useState(todayStr);
   
   // Memoizar estadísticas para rendimiento
   const stats = useMemo(() => {
-    const salesToday = sales.filter(s => s.date.startsWith(today));
-    const purchasesToday = purchases.filter(p => p.date.startsWith(today));
+    const filterByRange = (items: any[]) => items.filter((item: { date: string }) => {
+      const itemDate = item.date.split('T')[0];
+      return itemDate >= fromDate && itemDate <= toDate;
+    });
+
+    const salesInRange = filterByRange(sales);
+    const purchasesInRange = filterByRange(purchases);
+    const expensesInRange = filterByRange(expenses);
+    const movementsInRange = filterByRange(movements || []);
     
-    const grossSalesToday = salesToday.reduce((sum, s) => sum + (s.totalUSD || 0), 0);
-    const cashSalesToday = salesToday.reduce((sum, s) => sum + (s.paidAmountUSD || 0), 0);
-    const creditSalesToday = grossSalesToday - cashSalesToday;
-    const collectionsToday = cashSalesToday; 
-    const totalPurchasesToday = purchasesToday.reduce((sum, p) => sum + (p.totalUSD || 0), 0);
-    const totalExpensesToday = expenses.filter(e => e.date.startsWith(today)).reduce((sum, e) => sum + (e.amountUSD || 0), 0);
-    const wasteTodayUSD = (products.reduce((sum, p) => sum + ((p.mermaTotal || 0) * (p.costUSD || 0)), 0) / 30) || 0;
+    const grossSales = salesInRange.reduce((sum, s) => sum + (s.totalUSD || 0), 0);
+    const cashSales = salesInRange.reduce((sum, s) => sum + (s.paidAmountUSD || 0), 0);
+    const creditSales = grossSales - cashSales;
+    const collections = cashSales; 
+    const totalPurchases = purchasesInRange.reduce((sum, p) => sum + (p.totalUSD || 0), 0);
+    const totalExpenses = expensesInRange.reduce((sum, e) => sum + (e.amountUSD || 0), 0);
+    
+    // Calcular Merma en el periodo
+    const mermaMovements = movementsInRange.filter(m => m.type === 'merma');
+    const mermaTotalUSD = mermaMovements.reduce((sum, m) => {
+      const product = products.find(p => p.id === m.productId);
+      return sum + (Math.abs(m.quantity) * (product?.costUSD || 0));
+    }, 0);
     
     const totalCreditsPending = sales.filter(s => s.status === 'pending').reduce((sum, s) => sum + ((s.totalUSD || 0) - (s.paidAmountUSD || 0)), 0);
     const lowStockProducts = products.filter(p => (p.stock || 0) <= (p.minStock || 0));
 
     // Calcular productos más vendidos
     const productSales: Record<string, { name: string, quantity: number, total: number }> = {};
-    sales.forEach(sale => {
-      sale.items.forEach(item => {
+    salesInRange.forEach(sale => {
+      sale.items.forEach((item: any) => {
         if (!productSales[item.productId]) {
           productSales[item.productId] = { name: item.name, quantity: 0, total: 0 };
         }
@@ -72,20 +90,20 @@ const Dashboard: React.FC<Props> = ({ sales, purchases, expenses, products, sett
     }).reverse();
 
     return {
-      grossSalesToday, cashSalesToday, creditSalesToday, collectionsToday,
-      totalPurchasesToday, totalExpensesToday, wasteTodayUSD, totalCreditsPending, lowStockProducts,
+      grossSales, cashSales, creditSales, collections,
+      totalPurchases, totalExpenses, mermaTotalUSD, totalCreditsPending, lowStockProducts,
       topProducts,
       last7Days
     };
-  }, [sales, purchases, expenses, products, today]);
+  }, [sales, purchases, expenses, products, movements, fromDate, toDate]);
 
-  const StatCard = ({ label, value, icon: Icon, color, isToday }: any) => (
+  const StatCard = ({ label, value, icon: Icon, color, isPeriod }: any) => (
     <div className="bg-[#1e293b] p-5 rounded-[2rem] border border-slate-700/50 shadow-lg group hover:border-slate-500 transition-all">
       <div className="flex justify-between items-start mb-3">
         <div className={`p-3 rounded-2xl ${color} bg-opacity-10 ${color.replace('bg-', 'text-')} group-hover:scale-110 transition-transform`}>
           <Icon size={20} />
         </div>
-        {isToday && <span className="text-[7px] font-black text-orange-500 bg-orange-500/10 px-2 py-1 rounded-lg tracking-widest uppercase">Hoy</span>}
+        {isPeriod && <span className="text-[7px] font-black text-orange-500 bg-orange-500/10 px-2 py-1 rounded-lg tracking-widest uppercase">Periodo</span>}
       </div>
       <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">{label}</p>
       <h3 className="text-2xl font-black text-white mt-1.5 tracking-tighter leading-none">${(value || 0).toFixed(2)}</h3>
@@ -97,50 +115,62 @@ const Dashboard: React.FC<Props> = ({ sales, purchases, expenses, products, sett
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
          <div className="space-y-1">
             <h2 className="text-xs font-black uppercase tracking-[0.4em] text-orange-500 flex items-center gap-2">
                <TrendingUp size={16} /> Resumen de Actividad
             </h2>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Estado del negocio al {new Date().toLocaleDateString('es-VE')}</p>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Estado del negocio</p>
+         </div>
+
+         <div className="flex items-center gap-2 bg-[#1e293b] p-2 rounded-2xl border border-slate-700">
+            <div className="flex items-center gap-2 px-3">
+              <Calendar size={14} className="text-slate-500" />
+              <input 
+                type="date" 
+                value={fromDate} 
+                onChange={(e) => setFromDate(e.target.value)}
+                className="bg-transparent text-[10px] font-black text-white outline-none uppercase"
+              />
+            </div>
+            <ArrowRight size={14} className="text-slate-600" />
+            <div className="flex items-center gap-2 px-3">
+              <input 
+                type="date" 
+                value={toDate} 
+                onChange={(e) => setToDate(e.target.value)}
+                className="bg-transparent text-[10px] font-black text-white outline-none uppercase"
+              />
+            </div>
          </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <StatCard label="Ventas Brutas" value={stats.grossSalesToday} icon={Tag} color="bg-orange-500" isToday />
-        <StatCard label="Ventas Contado" value={stats.cashSalesToday} icon={DollarSign} color="bg-emerald-500" isToday />
-        <StatCard label="Ventas Crédito" value={stats.creditSalesToday} icon={CreditCard} color="bg-rose-500" isToday />
-        <StatCard label="Cobranzas Hoy" value={stats.collectionsToday} icon={PiggyBank} color="bg-indigo-500" isToday />
-        <StatCard label="Gastos Hoy" value={stats.totalExpensesToday} icon={Wallet} color="bg-rose-500" isToday />
-        <StatCard label="Compras Hoy" value={stats.totalPurchasesToday} icon={ShoppingCart} color="bg-amber-500" isToday />
+        <StatCard label="Ventas Brutas" value={stats.grossSales} icon={Tag} color="bg-orange-500" isPeriod />
+        <StatCard label="Ventas Contado" value={stats.cashSales} icon={DollarSign} color="bg-emerald-500" isPeriod />
+        <StatCard label="Ventas Crédito" value={stats.creditSales} icon={CreditCard} color="bg-rose-500" isPeriod />
+        <StatCard label="Cobranzas" value={stats.collections} icon={PiggyBank} color="bg-indigo-500" isPeriod />
+        <StatCard label="Gastos" value={stats.totalExpenses} icon={Wallet} color="bg-rose-500" isPeriod />
+        <StatCard label="Compras" value={stats.totalPurchases} icon={ShoppingCart} color="bg-amber-500" isPeriod />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-1 space-y-4">
            <div className="bg-gradient-to-br from-rose-500 to-rose-600 p-6 rounded-[2.5rem] text-white shadow-xl shadow-rose-500/20 relative overflow-hidden group">
               <div className="absolute -right-4 -top-4 opacity-10 group-hover:scale-110 transition-transform">
-                 <AlertTriangle size={120} />
+                 <Trash2 size={120} />
               </div>
               <div className="flex justify-between items-center mb-4">
-                 <AlertTriangle size={24} />
-                 <span className="text-[8px] font-black uppercase tracking-widest bg-white/20 px-2 py-1 rounded-lg">Urgente</span>
+                 <Trash2 size={24} />
+                 <span className="text-[8px] font-black uppercase tracking-widest bg-white/20 px-2 py-1 rounded-lg">Merma</span>
               </div>
-              <h3 className="text-4xl font-black tracking-tighter">{stats.lowStockProducts.length}</h3>
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mt-1">Productos bajo el mínimo</p>
-              
-              {stats.lowStockProducts.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  {stats.lowStockProducts.slice(0, 3).map(p => (
-                    <div key={p.id} className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest bg-white/10 p-2 rounded-lg">
-                      <span className="truncate max-w-[100px]">{p.name}</span>
-                      <span className="text-white">{p.stock}</span>
-                    </div>
-                  ))}
-                  {stats.lowStockProducts.length > 3 && (
-                    <p className="text-[8px] text-center opacity-70">y {stats.lowStockProducts.length - 3} más...</p>
-                  )}
-                </div>
-              )}
+              <h3 className="text-4xl font-black tracking-tighter">${(stats.mermaTotalUSD || 0).toFixed(2)}</h3>
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mt-1">Pérdida por Merma en el Periodo</p>
+              <div className="mt-4 p-3 bg-white/10 rounded-2xl border border-white/10">
+                 <p className="text-[10px] font-black tracking-widest uppercase">
+                    {((stats.mermaTotalUSD || 0) * settings.exchangeRate).toLocaleString()} Bs
+                 </p>
+              </div>
            </div>
 
            <div className="bg-[#1e293b] p-6 rounded-[2.5rem] border border-slate-700">
@@ -200,7 +230,7 @@ const Dashboard: React.FC<Props> = ({ sales, purchases, expenses, products, sett
                     />
                     <Bar dataKey="total" radius={[4, 4, 0, 0]}>
                        {stats.last7Days.map((entry, index) => (
-                         <Cell key={`cell-${index}`} fill={entry.date === today ? '#f97316' : '#6366f1'} />
+                         <Cell key={`cell-${index}`} fill={entry.date === todayStr ? '#f97316' : '#6366f1'} />
                        ))}
                     </Bar>
                  </BarChart>

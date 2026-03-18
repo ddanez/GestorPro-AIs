@@ -62,13 +62,14 @@ const App: React.FC = () => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
+  const [movements, setMovements] = useState<any[]>([]);
 
   const loadData = useCallback(async () => {
     if (!user) return;
     try {
       dbService.setToken(user.token || null);
       await dbService.init();
-      const [p, c, s, sa, pu, st, sel, pay, ex] = await Promise.all([
+      const [p, c, s, sa, pu, st, sel, pay, ex, mov] = await Promise.all([
         dbService.getAll<Product>('products'),
         dbService.getAll<Customer>('customers'),
         dbService.getAll<Supplier>('suppliers'),
@@ -77,7 +78,8 @@ const App: React.FC = () => {
         dbService.getAll<any>('settings'),
         dbService.getAll<Seller>('sellers'),
         dbService.getAll<any>('payments'),
-        dbService.getAll<any>('expenses')
+        dbService.getAll<any>('expenses'),
+        dbService.getAll<any>('movements')
       ]);
 
       setProducts(p || []);
@@ -88,6 +90,7 @@ const App: React.FC = () => {
       setPurchases((pu || []).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       setPayments((pay || []).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       setExpenses((ex || []).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      setMovements((mov || []).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
 
       const savedSettings = st.find((s: any) => s.id === 'app_settings');
       const savedCompany = st.find((s: any) => s.id === 'company_info');
@@ -265,7 +268,7 @@ const App: React.FC = () => {
 
       <main className="flex-1 overflow-y-auto bg-[#0f172a]">
         <div className="max-w-6xl mx-auto p-4 md:p-8 pb-24 md:pb-8">
-          {activeTab === AppTab.DASHBOARD && <Dashboard sales={sales} purchases={purchases} expenses={expenses} products={products} settings={settings} />}
+          {activeTab === AppTab.DASHBOARD && <Dashboard sales={sales} purchases={purchases} expenses={expenses} products={products} settings={settings} movements={movements} />}
           {activeTab === AppTab.INVENTORY && <Inventory products={products} setProducts={setProducts} settings={settings} />}
           {activeTab === AppTab.SALES && <Sales sales={sales} setSales={setSales} customers={customers} setCustomers={setCustomers} products={products} setProducts={setProducts} sellers={sellers} settings={settings} company={company} />}
           {activeTab === AppTab.PURCHASES && <Purchases purchases={purchases} setPurchases={setPurchases} suppliers={suppliers} setSuppliers={setSuppliers} products={products} setProducts={setProducts} settings={settings} />}
