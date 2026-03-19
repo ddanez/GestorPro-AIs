@@ -136,6 +136,24 @@ const Manufacturing: React.FC<ManufacturingProps> = ({ settings }) => {
     }));
   };
 
+  const handlePVPChange = (pvp: number) => {
+    const totalCost = newRecipe.ingredients?.reduce((sum, ing) => sum + (ing.costUSD || 0), 0) || 0;
+    const portions = newRecipe.portions || 1;
+    
+    if (totalCost > 0) {
+      const totalSale = pvp * portions;
+      const profitPercent = ((totalSale / totalCost) - 1) * 100;
+      
+      setNewRecipe(prev => ({
+        ...prev,
+        pricePerPortionUSD: pvp,
+        profitPercentage: Number(profitPercent.toFixed(2))
+      }));
+    } else {
+      setNewRecipe(prev => ({ ...prev, pricePerPortionUSD: pvp }));
+    }
+  };
+
   const handleAddIngredientToRecipe = (ing: Ingredient) => {
     const recipeIng: RecipeIngredient = {
       ingredientId: ing.id,
@@ -322,7 +340,7 @@ const Manufacturing: React.FC<ManufacturingProps> = ({ settings }) => {
                   <p className="text-xs font-black text-white">${recipe.totalCostUSD.toFixed(2)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[8px] font-black text-slate-500 uppercase">Precio/Porción</p>
+                  <p className="text-[8px] font-black text-slate-500 uppercase">PVP</p>
                   <p className="text-xs font-black text-emerald-400">${recipe.pricePerPortionUSD.toFixed(2)}</p>
                 </div>
               </div>
@@ -533,7 +551,7 @@ const Manufacturing: React.FC<ManufacturingProps> = ({ settings }) => {
 
             {/* Footer Summary */}
             <div className="p-6 bg-slate-900/50 border-t border-slate-700">
-              <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-4 gap-4 mb-6">
                 <div className="space-y-1">
                   <label className="text-[8px] font-black text-slate-500 uppercase ml-1">% Gana</label>
                   <input 
@@ -544,12 +562,22 @@ const Manufacturing: React.FC<ManufacturingProps> = ({ settings }) => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[8px] font-black text-slate-500 uppercase ml-1"># Porci</label>
+                  <label className="text-[8px] font-black text-slate-500 uppercase ml-1">Porciones</label>
                   <input 
                     type="number" 
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-xs font-black text-white outline-none"
                     value={newRecipe.portions}
                     onChange={(e) => setNewRecipe({...newRecipe, portions: Number(e.target.value)})}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[8px] font-black text-slate-500 uppercase ml-1">PVP ($)</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-xs font-black text-white outline-none"
+                    value={newRecipe.pricePerPortionUSD}
+                    onChange={(e) => handlePVPChange(Number(e.target.value))}
                   />
                 </div>
                 <div className="flex items-end">
@@ -576,15 +604,15 @@ const Manufacturing: React.FC<ManufacturingProps> = ({ settings }) => {
                   <span className="text-xs font-black text-emerald-400">${newRecipe.totalSaleUSD?.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-black text-slate-500 uppercase">Costo Porción:</span>
+                  <span className="text-[10px] font-black text-slate-500 uppercase">Costo/Porción:</span>
                   <span className="text-xs font-black text-white">${newRecipe.costPerPortionUSD?.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-black text-slate-500 uppercase">Ganancia Porción:</span>
+                  <span className="text-[10px] font-black text-slate-500 uppercase">Gana/Porción:</span>
                   <span className="text-xs font-black text-white">${newRecipe.profitPerPortionUSD?.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-black text-slate-500 uppercase">Precio Porción:</span>
+                  <span className="text-[10px] font-black text-slate-500 uppercase">PVP:</span>
                   <span className="text-sm font-black text-rose-500">${newRecipe.pricePerPortionUSD?.toFixed(2)}</span>
                 </div>
               </div>
