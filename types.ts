@@ -169,7 +169,7 @@ export interface Ingredient {
   id: string;
   name: string;
   quantity: number;
-  unit: 'gramos' | 'mililitros' | 'piezas';
+  unit: 'gramos' | 'mililitros' | 'piezas' | 'kilogramos' | 'litros';
   priceUSD: number;
 }
 

@@ -272,7 +272,7 @@ const Manufacturing: React.FC<ManufacturingProps> = ({ settings }) => {
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-slate-400">
-                    {ing.unit === 'gramos' ? <Scale size={18} /> : ing.unit === 'mililitros' ? <Droplets size={18} /> : <Box size={18} />}
+                    {ing.unit === 'gramos' || ing.unit === 'kilogramos' ? <Scale size={18} /> : ing.unit === 'mililitros' || ing.unit === 'litros' ? <Droplets size={18} /> : <Box size={18} />}
                   </div>
                   <div>
                     <p className="font-black text-xs text-white uppercase truncate">{ing.name}</p>
@@ -394,7 +394,9 @@ const Manufacturing: React.FC<ManufacturingProps> = ({ settings }) => {
                     onChange={(e) => setNewIngredient({...newIngredient, unit: e.target.value as any})}
                   >
                     <option value="gramos">Gramos</option>
+                    <option value="kilogramos">Kilogramos</option>
                     <option value="mililitros">Mililitros</option>
+                    <option value="litros">Litros</option>
                     <option value="piezas">Piezas</option>
                   </select>
                 </div>
