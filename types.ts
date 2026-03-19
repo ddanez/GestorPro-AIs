@@ -6,7 +6,7 @@ export enum AppTab {
   PURCHASES = 'purchases',
   CUSTOMERS = 'customers',
   SUPPLIERS = 'suppliers',
-  SELLERS = 'sellers',
+  MANUFACTURING = 'manufacturing',
   CXC = 'cxc',
   CXP = 'cxp',
   EXPENSES = 'expenses',
@@ -163,6 +163,37 @@ export interface Expense {
   exchangeRate: number;
   paymentMethod: string;
   notes?: string;
+}
+
+export interface Ingredient {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: 'gramos' | 'mililitros' | 'piezas';
+  priceUSD: number;
+}
+
+export interface RecipeIngredient {
+  ingredientId: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  costUSD: number;
+}
+
+export interface Recipe {
+  id: string;
+  name: string;
+  ingredients: RecipeIngredient[];
+  profitPercentage: number;
+  portions: number;
+  pricePerPortionUSD: number;
+  totalCostUSD: number;
+  totalProfitUSD: number;
+  totalSaleUSD: number;
+  costPerPortionUSD: number;
+  profitPerPortionUSD: number;
+  preparation?: string;
 }
 
 export type UserRole = 'admin' | 'seller';

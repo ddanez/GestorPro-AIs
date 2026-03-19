@@ -35,7 +35,7 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
   else console.log('🗄️ SQLite conectado en:', DB_PATH);
 });
 
-const VALID_STORES = ['products', 'customers', 'suppliers', 'sales', 'purchases', 'settings', 'sellers', 'payments', 'users', 'authenticators', 'expenses', 'movements'];
+const VALID_STORES = ['products', 'customers', 'suppliers', 'sales', 'purchases', 'settings', 'sellers', 'payments', 'users', 'authenticators', 'expenses', 'movements', 'ingredients', 'recipes'];
 
 db.serialize(() => {
   VALID_STORES.forEach(store => {
@@ -67,7 +67,7 @@ db.serialize(() => {
     if (!row) {
       const hashedPassword = bcrypt.hashSync('admin123', 10);
       db.run("INSERT INTO users (id, username, password, role, name, permissions) VALUES (?, ?, ?, ?, ?, ?)", 
-        [crypto.randomUUID(), 'admin', hashedPassword, 'admin', 'Administrador', '["dashboard","inventory","sales","purchases","customers","suppliers","sellers","cxc","cxp","expenses","reports","settings"]']);
+        [crypto.randomUUID(), 'admin', hashedPassword, 'admin', 'Administrador', '["dashboard","inventory","sales","purchases","customers","suppliers","manufacturing","cxc","cxp","expenses","reports","settings"]']);
       console.log("👤 Usuario admin por defecto creado: admin / admin123");
     }
   });
@@ -78,7 +78,7 @@ db.serialize(() => {
       db.run("ALTER TABLE users ADD COLUMN permissions TEXT", (err) => {
         if (!err) {
           // Grant all permissions to existing admin
-          db.run("UPDATE users SET permissions = '[\"dashboard\",\"inventory\",\"sales\",\"purchases\",\"customers\",\"suppliers\",\"sellers\",\"cxc\",\"cxp\",\"expenses\",\"reports\",\"settings\"]' WHERE role = 'admin'");
+          db.run("UPDATE users SET permissions = '[\"dashboard\",\"inventory\",\"sales\",\"purchases\",\"customers\",\"suppliers\",\"manufacturing\",\"cxc\",\"cxp\",\"expenses\",\"reports\",\"settings\"]' WHERE role = 'admin'");
         }
       });
     }
@@ -95,7 +95,7 @@ app.post('/api/auth/register', (req: any, res: any) => {
 
   const hashedPassword = bcrypt.hashSync(password, 10);
   const id = crypto.randomUUID();
-  const perms = permissions ? JSON.stringify(permissions) : (role === 'admin' ? '["dashboard","inventory","sales","purchases","customers","suppliers","sellers","cxc","cxp","expenses","reports","settings"]' : '["dashboard","sales","customers","cxc"]');
+  const perms = permissions ? JSON.stringify(permissions) : (role === 'admin' ? '["dashboard","inventory","sales","purchases","customers","suppliers","manufacturing","cxc","cxp","expenses","reports","settings"]' : '["dashboard","sales","customers","cxc"]');
 
   db.run("INSERT INTO users (id, username, password, role, name, permissions) VALUES (?, ?, ?, ?, ?, ?)", 
     [id, username, hashedPassword, role, name, perms], (err) => {

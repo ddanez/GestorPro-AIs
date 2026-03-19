@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   LayoutDashboard, Package, ShoppingCart, Tag, Users, Truck, 
-  HandCoins, Wallet, BarChart3, Settings as SettingsIcon, Menu, X, UserCheck, Camera
+  HandCoins, Wallet, BarChart3, Settings as SettingsIcon, Menu, X, UserCheck, Camera, ChefHat
 } from 'lucide-react';
 import { AppTab, CompanyInfo, AppSettings, Product, Customer, Supplier, Sale, Purchase, Seller, User } from './types';
 import { dbService } from './db';
@@ -28,6 +28,7 @@ import Settings from './components/Settings';
 import Splash from './components/Splash';
 import ExchangeRateModal from './components/ExchangeRateModal';
 import Auth from './components/Auth';
+import Manufacturing from './components/Manufacturing';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -168,7 +169,7 @@ const App: React.FC = () => {
     { id: AppTab.EXPENSES, label: 'GASTOS', icon: Wallet, roles: ['admin'] },
     { id: AppTab.CUSTOMERS, label: 'CLIENTES', icon: Users, roles: ['admin', 'seller'] },
     { id: AppTab.SUPPLIERS, label: 'PROVEEDORES', icon: Truck, roles: ['admin'] },
-    { id: AppTab.SELLERS, label: 'VENDEDORES', icon: UserCheck, roles: ['admin'] },
+    { id: AppTab.MANUFACTURING, label: 'MANUFACTURA', icon: ChefHat, roles: ['admin'] },
     { id: AppTab.CXC, label: 'CXC (DEUDAS)', icon: HandCoins, roles: ['admin', 'seller'] },
     { id: AppTab.CXP, label: 'CXP (PAGOS)', icon: Wallet, roles: ['admin'] },
     { id: AppTab.REPORTS, label: 'REPORTES', icon: BarChart3, roles: ['admin'] },
@@ -275,7 +276,7 @@ const App: React.FC = () => {
           {activeTab === AppTab.EXPENSES && <Expenses expenses={expenses} setExpenses={setExpenses} settings={settings} />}
           {activeTab === AppTab.CUSTOMERS && <Contacts type="customers" items={customers} setItems={setCustomers} relatedData={sales} payments={payments} settings={settings} />}
           {activeTab === AppTab.SUPPLIERS && <Contacts type="suppliers" items={suppliers} setItems={setSuppliers} relatedData={purchases} payments={payments} settings={settings} />}
-          {activeTab === AppTab.SELLERS && <Contacts type="sellers" items={sellers} setItems={setSellers} relatedData={sales} payments={payments} settings={settings} />}
+          { activeTab === AppTab.MANUFACTURING && <Manufacturing settings={settings} /> }
           {activeTab === AppTab.CXC && <Accounts type="cxc" items={sales.filter(s => s.status === 'pending')} settings={settings} company={company} onUpdate={loadData} customers={customers} suppliers={suppliers} />}
           {activeTab === AppTab.CXP && <Accounts type="cxp" items={purchases.filter(p => p.status === 'pending')} settings={settings} company={company} onUpdate={loadData} customers={customers} suppliers={suppliers} />}
           {activeTab === AppTab.REPORTS && <Reports sales={sales} purchases={purchases} expenses={expenses} products={products} customers={customers} suppliers={suppliers} settings={settings} movements={movements} />}
