@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Wallet, Plus, Trash2, Calendar, Tag, DollarSign, Search } from 'lucide-react';
 import { Expense, AppSettings } from '../types';
 import { dbService } from '../db';
-import { parseNumber } from '../utils';
+import { parseNumber, calculateBS } from '../utils';
 
 interface Props {
   expenses: Expense[];
@@ -119,7 +119,7 @@ const Expenses: React.FC<Props> = ({ expenses, setExpenses, settings }) => {
               <div className="text-right flex flex-col items-end gap-2">
                 <div>
                   <p className="text-xl font-black text-white leading-none">${expense.amountUSD.toFixed(2)}</p>
-                  <p className="text-[10px] font-bold text-rose-400 mt-1">{expense.amountBS.toLocaleString()} Bs</p>
+                  <p className="text-[10px] font-bold text-rose-400 mt-1">{calculateBS(expense.amountUSD, 'paid', expense.exchangeRate, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs</p>
                 </div>
                 <button 
                   onClick={() => handleDeleteExpense(expense.id)}

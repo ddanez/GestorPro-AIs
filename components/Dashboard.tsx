@@ -1,5 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
+import { calculateBS } from '../utils';
 import { 
   TrendingUp, 
   CreditCard, 
@@ -44,11 +45,22 @@ const Dashboard: React.FC<Props> = ({ sales, purchases, expenses, products, sett
     const movementsInRange = filterByRange(movements || []);
     
     const grossSales = salesInRange.reduce((sum, s) => sum + (s.totalUSD || 0), 0);
+    const grossSalesBS = salesInRange.reduce((sum, s) => sum + calculateBS(s.totalUSD || 0, s.status, s.exchangeRate, settings.exchangeRate), 0);
+    
     const cashSales = salesInRange.reduce((sum, s) => sum + (s.paidAmountUSD || 0), 0);
+    const cashSalesBS = salesInRange.reduce((sum, s) => sum + calculateBS(s.paidAmountUSD || 0, 'paid', s.exchangeRate, settings.exchangeRate), 0);
+    
     const creditSales = grossSales - cashSales;
+    const creditSalesBS = grossSalesBS - cashSalesBS;
+    
     const collections = cashSales; 
+    const collectionsBS = cashSalesBS;
+    
     const totalPurchases = purchasesInRange.reduce((sum, p) => sum + (p.totalUSD || 0), 0);
+    const totalPurchasesBS = purchasesInRange.reduce((sum, p) => sum + calculateBS(p.totalUSD || 0, p.status, p.exchangeRate, settings.exchangeRate), 0);
+    
     const totalExpenses = expensesInRange.reduce((sum, e) => sum + (e.amountUSD || 0), 0);
+    const totalExpensesBS = expensesInRange.reduce((sum, e) => sum + (e.amountBS || (e.amountUSD * (e.exchangeRate || settings.exchangeRate))), 0);
     
     // Calcular Merma en el periodo
     const mermaMovements = movementsInRange.filter(m => m.type === 'merma');
@@ -56,8 +68,11 @@ const Dashboard: React.FC<Props> = ({ sales, purchases, expenses, products, sett
       const product = products.find(p => p.id === m.productId);
       return sum + (Math.abs(m.quantity) * (product?.costUSD || 0));
     }, 0);
+    const mermaTotalBS = calculateBS(mermaTotalUSD, 'pending', undefined, settings.exchangeRate);
     
     const totalCreditsPending = sales.filter(s => s.status === 'pending').reduce((sum, s) => sum + ((s.totalUSD || 0) - (s.paidAmountUSD || 0)), 0);
+    const totalCreditsPendingBS = sales.filter(s => s.status === 'pending').reduce((sum, s) => sum + calculateBS((s.totalUSD || 0) - (s.paidAmountUSD || 0), 'pending', undefined, settings.exchangeRate), 0);
+    
     const lowStockProducts = products.filter(p => (p.stock || 0) <= (p.minStock || 0));
 
     // Calcular productos más vendidos
@@ -90,14 +105,21 @@ const Dashboard: React.FC<Props> = ({ sales, purchases, expenses, products, sett
     }).reverse();
 
     return {
-      grossSales, cashSales, creditSales, collections,
-      totalPurchases, totalExpenses, mermaTotalUSD, totalCreditsPending, lowStockProducts,
+      grossSales, grossSalesBS,
+      cashSales, cashSalesBS,
+      creditSales, creditSalesBS,
+      collections, collectionsBS,
+      totalPurchases, totalPurchasesBS,
+      totalExpenses, totalExpensesBS,
+      mermaTotalUSD, mermaTotalBS,
+      totalCreditsPending, totalCreditsPendingBS,
+      lowStockProducts,
       topProducts,
       last7Days
     };
   }, [sales, purchases, expenses, products, movements, fromDate, toDate]);
 
-  const StatCard = ({ label, value, icon: Icon, color, isPeriod }: any) => (
+  const StatCard = ({ label, value, valueBS, icon: Icon, color, isPeriod }: any) => (
     <div className="bg-[#1e293b] p-5 rounded-[2rem] border border-slate-700/50 shadow-lg group hover:border-slate-500 transition-all">
       <div className="flex justify-between items-start mb-3">
         <div className={`p-3 rounded-2xl ${color} bg-opacity-10 ${color.replace('bg-', 'text-')} group-hover:scale-110 transition-transform`}>
@@ -108,7 +130,7 @@ const Dashboard: React.FC<Props> = ({ sales, purchases, expenses, products, sett
       <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">{label}</p>
       <h3 className="text-2xl font-black text-white mt-1.5 tracking-tighter leading-none">${(value || 0).toFixed(2)}</h3>
       <div className="flex items-center gap-1.5 mt-2">
-         <span className="text-[10px] font-bold text-slate-400">{((value || 0) * (settings.exchangeRate || 0)).toLocaleString()} Bs</span>
+         <span className="text-[10px] font-bold text-slate-400">{(valueBS || ((value || 0) * (settings.exchangeRate || 0))).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs</span>
       </div>
     </div>
   );
@@ -146,12 +168,12 @@ const Dashboard: React.FC<Props> = ({ sales, purchases, expenses, products, sett
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <StatCard label="Ventas Brutas" value={stats.grossSales} icon={Tag} color="bg-orange-500" isPeriod />
-        <StatCard label="Ventas Contado" value={stats.cashSales} icon={DollarSign} color="bg-emerald-500" isPeriod />
-        <StatCard label="Ventas Crédito" value={stats.creditSales} icon={CreditCard} color="bg-rose-500" isPeriod />
-        <StatCard label="Cobranzas" value={stats.collections} icon={PiggyBank} color="bg-indigo-500" isPeriod />
-        <StatCard label="Gastos" value={stats.totalExpenses} icon={Wallet} color="bg-rose-500" isPeriod />
-        <StatCard label="Compras" value={stats.totalPurchases} icon={ShoppingCart} color="bg-amber-500" isPeriod />
+        <StatCard label="Ventas Brutas" value={stats.grossSales} valueBS={stats.grossSalesBS} icon={Tag} color="bg-orange-500" isPeriod />
+        <StatCard label="Ventas Contado" value={stats.cashSales} valueBS={stats.cashSalesBS} icon={DollarSign} color="bg-emerald-500" isPeriod />
+        <StatCard label="Ventas Crédito" value={stats.creditSales} valueBS={stats.creditSalesBS} icon={CreditCard} color="bg-rose-500" isPeriod />
+        <StatCard label="Cobranzas" value={stats.collections} valueBS={stats.collectionsBS} icon={PiggyBank} color="bg-indigo-500" isPeriod />
+        <StatCard label="Gastos" value={stats.totalExpenses} valueBS={stats.totalExpensesBS} icon={Wallet} color="bg-rose-500" isPeriod />
+        <StatCard label="Compras" value={stats.totalPurchases} valueBS={stats.totalPurchasesBS} icon={ShoppingCart} color="bg-amber-500" isPeriod />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -168,7 +190,7 @@ const Dashboard: React.FC<Props> = ({ sales, purchases, expenses, products, sett
               <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mt-1">Pérdida por Merma en el Periodo</p>
               <div className="mt-4 p-3 bg-white/10 rounded-2xl border border-white/10">
                  <p className="text-[10px] font-black tracking-widest uppercase">
-                    {((stats.mermaTotalUSD || 0) * settings.exchangeRate).toLocaleString()} Bs
+                    {calculateBS(stats.mermaTotalUSD || 0, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs
                  </p>
               </div>
            </div>
@@ -181,7 +203,9 @@ const Dashboard: React.FC<Props> = ({ sales, purchases, expenses, products, sett
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Total por Cobrar</p>
               <h3 className="text-3xl font-black text-white tracking-tighter mt-1">${(stats.totalCreditsPending || 0).toFixed(2)}</h3>
               <div className="mt-3 p-2 bg-emerald-500/5 rounded-xl border border-emerald-500/10">
-                 <p className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest text-center">Capital Pendiente</p>
+                 <p className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest text-center">
+                   {calculateBS(stats.totalCreditsPending || 0, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs
+                 </p>
               </div>
            </div>
 
@@ -255,7 +279,7 @@ const Dashboard: React.FC<Props> = ({ sales, purchases, expenses, products, sett
                      </div>
                      <div className="text-right">
                         <p className="text-sm font-black text-white leading-none">${(s.totalUSD || 0).toFixed(2)}</p>
-                        <p className="text-[8px] text-orange-500 font-bold uppercase mt-1">{((s.totalUSD || 0) * (s.exchangeRate || settings.exchangeRate)).toLocaleString()} Bs</p>
+                        <p className="text-[8px] text-orange-500 font-bold uppercase mt-1">{calculateBS(s.totalUSD || 0, s.status, s.exchangeRate, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs</p>
                      </div>
                   </div>
                 ))

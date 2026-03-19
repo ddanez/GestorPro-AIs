@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { CheckCircle2, DollarSign, Calendar, User, Truck, MessageCircle, Wallet, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
 import { AppSettings, Sale, Purchase, CompanyInfo, Customer, Supplier } from '../types';
 import { dbService } from '../db';
-import { parseNumber } from '../utils';
+import { parseNumber, calculateBS } from '../utils';
 import { TicketModal } from './TicketModal';
 
 interface Props {
@@ -147,10 +147,12 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
         <div className="bg-[#1e293b] p-4 rounded-2xl border border-slate-700 shadow-lg">
           <p className="text-[8px] font-black text-rose-500 uppercase tracking-widest leading-none mb-1">Total Pendiente</p>
           <p className="text-xl font-black text-white leading-none">${(totalPending || 0).toFixed(2)}</p>
+          <p className="text-[10px] font-black text-slate-400 mt-1">{calculateBS(totalPending, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.</p>
         </div>
         <div className="bg-[#1e293b] p-4 rounded-2xl border border-slate-700 shadow-lg">
           <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest leading-none mb-1">Saldo a Favor</p>
           <p className="text-xl font-black text-white leading-none">${(totalCredit || 0).toFixed(2)}</p>
+          <p className="text-[10px] font-black text-slate-400 mt-1">{calculateBS(totalCredit, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.</p>
         </div>
       </div>
 
@@ -169,12 +171,18 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
                   </div>
                   <div className="truncate">
                     <p className="font-black text-xs text-white leading-tight uppercase truncate">{group.name}</p>
-                    <div className="flex gap-2 mt-0.5">
+                    <div className="flex flex-col mt-0.5">
                       {group.totalPending > 0 && (
-                        <p className="text-[8px] text-rose-500 font-black uppercase">Deuda: ${group.totalPending.toFixed(2)}</p>
+                        <div className="flex gap-2">
+                          <p className="text-[8px] text-rose-500 font-black uppercase">Deuda: ${group.totalPending.toFixed(2)}</p>
+                          <p className="text-[8px] text-slate-400 font-black uppercase">({calculateBS(group.totalPending, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.)</p>
+                        </div>
                       )}
                       {group.creditBalance > 0 && (
-                        <p className="text-[8px] text-emerald-500 font-black uppercase">Crédito: ${group.creditBalance.toFixed(2)}</p>
+                        <div className="flex gap-2">
+                          <p className="text-[8px] text-emerald-500 font-black uppercase">Crédito: ${group.creditBalance.toFixed(2)}</p>
+                          <p className="text-[8px] text-slate-400 font-black uppercase">({calculateBS(group.creditBalance, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.)</p>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -213,6 +221,7 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
                         <div className="flex items-center gap-4">
                           <div className="text-right">
                             <p className="text-[9px] font-black text-rose-500">${invBalance.toFixed(2)}</p>
+                            <p className="text-[7px] text-slate-400 font-black uppercase">{calculateBS(invBalance, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.</p>
                             <p className="text-[7px] text-slate-500 font-bold uppercase">Original: ${inv.totalUSD.toFixed(2)}</p>
                           </div>
                           <button 

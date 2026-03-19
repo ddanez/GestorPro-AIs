@@ -4,6 +4,7 @@ import { Plus, Search, User, Phone, Trash2, Edit2, X, UserCheck, Mail, Loader2, 
 import { Customer, Supplier, Seller, AppSettings, Sale, Purchase, CompanyInfo } from '../types';
 import { dbService } from '../db';
 import { TicketModal } from './TicketModal';
+import { calculateBS } from '../utils';
 
 interface Props {
   type: 'customers' | 'suppliers' | 'sellers';
@@ -245,7 +246,7 @@ export const Contacts: React.FC<Props> = ({ type, items, setItems, relatedData, 
                           <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg"><TrendingUp size={18}/></div>
                           <div>
                              <h3 className="text-2xl font-black text-white">${historyStats.totalAmount.toFixed(2)}</h3>
-                             <p className="text-[8px] font-bold text-slate-500">{(historyStats.totalAmount * settings.exchangeRate).toLocaleString()} Bs</p>
+                             <p className="text-[8px] font-bold text-slate-500">{calculateBS(historyStats.totalAmount, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs</p>
                           </div>
                        </div>
                     </div>
@@ -255,7 +256,7 @@ export const Contacts: React.FC<Props> = ({ type, items, setItems, relatedData, 
                           <div className="p-2 bg-rose-500/10 text-rose-500 rounded-lg"><Wallet size={18}/></div>
                           <div>
                              <h3 className="text-2xl font-black text-white">${historyStats.pendingAmount.toFixed(2)}</h3>
-                             <p className="text-[8px] font-bold text-slate-500">{(historyStats.pendingAmount * settings.exchangeRate).toLocaleString()} Bs</p>
+                             <p className="text-[8px] font-bold text-slate-500">{calculateBS(historyStats.pendingAmount, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs</p>
                           </div>
                        </div>
                     </div>
@@ -307,7 +308,12 @@ export const Contacts: React.FC<Props> = ({ type, items, setItems, relatedData, 
                                        {op.entryType === 'payment' ? '+' : ''}${ (op.entryType === 'payment' ? op.amountUSD : op.totalUSD).toFixed(2) }
                                      </p>
                                      <p className="text-[8px] text-orange-500 font-bold">
-                                       {((op.entryType === 'payment' ? op.amountUSD : op.totalUSD) * (op.exchangeRate || settings.exchangeRate)).toLocaleString()} Bs
+                                       {calculateBS(
+                                         (op.entryType === 'payment' ? op.amountUSD : op.totalUSD),
+                                         (op.entryType === 'payment' ? 'paid' : op.status),
+                                         op.exchangeRate,
+                                         settings.exchangeRate
+                                       ).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs
                                      </p>
                                   </td>
                                   <td className="px-6 py-4 text-center">

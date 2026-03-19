@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Search, Edit2, Tag, Box, AlertTriangle, Layers, History, ArrowUpRight, ArrowDownLeft, X } from 'lucide-react';
 import { Product, AppSettings, Movement } from '../types';
 import { dbService } from '../db';
-import { parseNumber, searchMatch } from '../utils';
+import { parseNumber, searchMatch, calculateBS } from '../utils';
 
 interface Props {
   products: Product[];
@@ -117,7 +117,7 @@ const Inventory: React.FC<Props> = ({ products, setProducts, settings }) => {
                   </td>
                   <td className="px-5 py-3">
                     <p className="text-xs font-black text-white">${(p.priceUSD || 0).toFixed(2)}</p>
-                    <p className="text-[8px] text-orange-500 font-bold">{((p.priceUSD || 0) * settings.exchangeRate).toLocaleString()} Bs</p>
+                    <p className="text-[8px] text-orange-500 font-bold">{calculateBS(p.priceUSD || 0, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs</p>
                     {p.mermaTotal && p.mermaTotal > 0 ? (
                       <p className="text-[7px] text-rose-400 font-bold uppercase mt-1">Merma: {p.mermaTotal % 1 === 0 ? p.mermaTotal : p.mermaTotal.toFixed(2)}</p>
                     ) : null}

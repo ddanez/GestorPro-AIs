@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { Sale, Purchase, AppSettings, Product, Expense, Customer, Supplier, Movement } from '../types';
 import AIAnalysis from './AIAnalysis';
+import { calculateBS } from '../utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts';
 
 interface Props {
@@ -85,7 +86,7 @@ const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, custom
       s.date,
       s.customerName,
       s.totalUSD.toFixed(2),
-      s.totalBS.toFixed(2),
+      calculateBS(s.totalUSD, s.status, s.exchangeRate, settings.exchangeRate).toFixed(2),
       s.status === 'paid' ? 'Pagado' : 'Pendiente'
     ]);
 
@@ -109,6 +110,11 @@ const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, custom
   const totalPurchases = purchases.reduce((sum, p) => sum + p.totalUSD, 0);
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amountUSD, 0);
   const estimatedProfit = totalSales - totalPurchases - totalExpenses;
+
+  const totalSalesBS = sales.reduce((sum, s) => sum + calculateBS(s.totalUSD, s.status, s.exchangeRate, settings.exchangeRate), 0);
+  const totalPurchasesBS = purchases.reduce((sum, p) => sum + calculateBS(p.totalUSD, p.status, p.exchangeRate, settings.exchangeRate), 0);
+  const totalExpensesBS = expenses.reduce((sum, e) => sum + e.amountBS, 0);
+  const estimatedProfitBS = totalSalesBS - totalPurchasesBS - totalExpensesBS;
 
   const renderReportDetail = () => {
     if (!selectedReport) return null;
@@ -141,6 +147,40 @@ const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, custom
                   <Bar dataKey="total" fill="#10b981" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+          </div>
+        );
+        break;
+
+      case 'transactions_summary':
+        title = "Resumen de Transacciones";
+        content = (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-[#1e293b] p-6 rounded-2xl border border-slate-700">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Ventas</p>
+                <p className="text-2xl font-black text-emerald-400">${totalSales.toFixed(2)}</p>
+                <p className="text-sm text-slate-400">Bs. {totalSalesBS.toFixed(2)}</p>
+              </div>
+              <div className="bg-[#1e293b] p-6 rounded-2xl border border-slate-700">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Compras</p>
+                <p className="text-2xl font-black text-rose-400">${totalPurchases.toFixed(2)}</p>
+                <p className="text-sm text-slate-400">Bs. {totalPurchasesBS.toFixed(2)}</p>
+              </div>
+              <div className="bg-[#1e293b] p-6 rounded-2xl border border-slate-700">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Gastos</p>
+                <p className="text-2xl font-black text-rose-400">${totalExpenses.toFixed(2)}</p>
+                <p className="text-sm text-slate-400">Bs. {totalExpensesBS.toFixed(2)}</p>
+              </div>
+            </div>
+            <div className="bg-[#1e293b] p-6 rounded-2xl border border-slate-700">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Utilidad Estimada</p>
+              <p className={`text-3xl font-black ${estimatedProfit >= 0 ? 'text-emerald-400' : 'text-rose-500'}`}>
+                ${estimatedProfit.toFixed(2)}
+              </p>
+              <p className={`text-lg font-bold ${estimatedProfitBS >= 0 ? 'text-emerald-500/70' : 'text-rose-500/70'}`}>
+                Bs. {estimatedProfitBS.toFixed(2)}
+              </p>
             </div>
           </div>
         );
@@ -193,16 +233,22 @@ const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, custom
                     <th className="p-4">Producto</th>
                     <th className="p-4 text-right">Cantidad Merma</th>
                     <th className="p-4 text-right">Valor Est. (USD)</th>
+                    <th className="p-4 text-right">Valor Est. (BS)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
-                  {wasteProducts.map((p, i) => (
-                    <tr key={i} className="hover:bg-slate-800/50 transition-colors">
-                      <td className="p-4 font-bold">{p.name}</td>
-                      <td className="p-4 text-right font-black text-rose-400">{p.mermaTotal}</td>
-                      <td className="p-4 text-right font-black text-slate-400">${((p.mermaTotal || 0) * p.costUSD).toFixed(2)}</td>
-                    </tr>
-                  ))}
+                  {wasteProducts.map((p, i) => {
+                    const valorUSD = (p.mermaTotal || 0) * p.costUSD;
+                    const valorBS = calculateBS(valorUSD, 'pending', undefined, settings.exchangeRate); // Merma is current value
+                    return (
+                      <tr key={i} className="hover:bg-slate-800/50 transition-colors">
+                        <td className="p-4 font-bold">{p.name}</td>
+                        <td className="p-4 text-right font-black text-rose-400">{p.mermaTotal}</td>
+                        <td className="p-4 text-right font-black text-slate-400">${valorUSD.toFixed(2)}</td>
+                        <td className="p-4 text-right font-black text-emerald-400">Bs. {valorBS.toFixed(2)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -288,12 +334,12 @@ const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, custom
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-[#1e293b] p-4 rounded-2xl border border-slate-700">
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Total Pendiente</p>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Total Pendiente (USD)</p>
                 <p className="text-2xl font-black text-amber-400">${creditSales.reduce((sum, s) => sum + s.totalUSD, 0).toFixed(2)}</p>
               </div>
               <div className="bg-[#1e293b] p-4 rounded-2xl border border-slate-700">
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Cant. Facturas</p>
-                <p className="text-2xl font-black text-white">{creditSales.length}</p>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Total Pendiente (BS)</p>
+                <p className="text-2xl font-black text-emerald-400">Bs. {creditSales.reduce((sum, s) => sum + calculateBS(s.totalUSD, s.status, s.exchangeRate, settings.exchangeRate), 0).toFixed(2)}</p>
               </div>
             </div>
             <div className="bg-[#0f172a] rounded-2xl overflow-hidden border border-slate-800">
@@ -303,6 +349,7 @@ const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, custom
                     <th className="p-4">Cliente</th>
                     <th className="p-4">Fecha</th>
                     <th className="p-4 text-right">Monto USD</th>
+                    <th className="p-4 text-right">Monto BS</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
@@ -311,6 +358,48 @@ const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, custom
                       <td className="p-4 font-bold">{s.customerName}</td>
                       <td className="p-4 text-slate-400">{new Date(s.date).toLocaleDateString()}</td>
                       <td className="p-4 text-right font-black text-amber-400">${s.totalUSD.toFixed(2)}</td>
+                      <td className="p-4 text-right font-black text-emerald-400">Bs. {calculateBS(s.totalUSD, s.status, s.exchangeRate, settings.exchangeRate).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+        break;
+
+      case 'purchases_credit':
+        title = "Compras a Crédito (CXP)";
+        const creditPurchases = purchases.filter(p => p.status === 'pending');
+        content = (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-[#1e293b] p-4 rounded-2xl border border-slate-700">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Total por Pagar (USD)</p>
+                <p className="text-2xl font-black text-rose-400">${creditPurchases.reduce((sum, p) => sum + p.totalUSD, 0).toFixed(2)}</p>
+              </div>
+              <div className="bg-[#1e293b] p-4 rounded-2xl border border-slate-700">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Total por Pagar (BS)</p>
+                <p className="text-2xl font-black text-emerald-400">Bs. {creditPurchases.reduce((sum, p) => sum + calculateBS(p.totalUSD, p.status, p.exchangeRate, settings.exchangeRate), 0).toFixed(2)}</p>
+              </div>
+            </div>
+            <div className="bg-[#0f172a] rounded-2xl overflow-hidden border border-slate-800">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#1e293b] text-slate-400 font-black uppercase tracking-widest">
+                  <tr>
+                    <th className="p-4">Proveedor</th>
+                    <th className="p-4">Fecha</th>
+                    <th className="p-4 text-right">Monto USD</th>
+                    <th className="p-4 text-right">Monto BS</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {creditPurchases.map((p, i) => (
+                    <tr key={i} className="hover:bg-slate-800/50 transition-colors">
+                      <td className="p-4 font-bold">{p.supplierName}</td>
+                      <td className="p-4 text-slate-400">{new Date(p.date).toLocaleDateString()}</td>
+                      <td className="p-4 text-right font-black text-rose-400">${p.totalUSD.toFixed(2)}</td>
+                      <td className="p-4 text-right font-black text-emerald-400">Bs. {calculateBS(p.totalUSD, p.status, p.exchangeRate, settings.exchangeRate).toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -323,12 +412,18 @@ const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, custom
       case 'clients_ranking':
         title = "Ranking de Clientes";
         const clientRanking = customers
-          .map(c => ({
-            name: c.name,
-            total: sales.filter(s => s.customerId === c.id).reduce((sum, s) => sum + s.totalUSD, 0)
-          }))
-          .filter(c => c.total > 0)
-          .sort((a, b) => b.total - a.total);
+          .map(c => {
+            const clientSales = sales.filter(s => s.customerId === c.id);
+            const totalUSD = clientSales.reduce((sum, s) => sum + s.totalUSD, 0);
+            const totalBS = clientSales.reduce((sum, s) => sum + calculateBS(s.totalUSD, s.status, s.exchangeRate, settings.exchangeRate), 0);
+            return {
+              name: c.name,
+              totalUSD,
+              totalBS
+            };
+          })
+          .filter(c => c.totalUSD > 0)
+          .sort((a, b) => b.totalUSD - a.totalUSD);
         
         content = (
           <div className="space-y-4">
@@ -337,14 +432,16 @@ const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, custom
                 <thead className="bg-[#1e293b] text-slate-400 font-black uppercase tracking-widest">
                   <tr>
                     <th className="p-4">Cliente</th>
-                    <th className="p-4 text-right">Total Comprado (USD)</th>
+                    <th className="p-4 text-right">Total (USD)</th>
+                    <th className="p-4 text-right">Total (BS)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
                   {clientRanking.map((c, i) => (
                     <tr key={i} className="hover:bg-slate-800/50 transition-colors">
                       <td className="p-4 font-bold">{c.name}</td>
-                      <td className="p-4 text-right font-black text-emerald-400">${c.total.toFixed(2)}</td>
+                      <td className="p-4 text-right font-black text-emerald-400">${c.totalUSD.toFixed(2)}</td>
+                      <td className="p-4 text-right font-black text-emerald-500/70">Bs. {c.totalBS.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -474,21 +571,35 @@ const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, custom
            <div className="space-y-4 py-4">
               <div className="flex justify-between items-center text-sm">
                  <span className="text-slate-400">Ventas Brutas:</span>
-                 <span className="font-bold text-white">${totalSales.toFixed(2)}</span>
+                 <div className="text-right">
+                    <p className="font-bold text-white">${totalSales.toFixed(2)}</p>
+                    <p className="text-[10px] text-slate-500">Bs. {totalSalesBS.toFixed(2)}</p>
+                 </div>
               </div>
               <div className="flex justify-between items-center text-sm">
                  <span className="text-slate-400">Inversión (Compras):</span>
-                 <span className="font-bold text-rose-400">${totalPurchases.toFixed(2)}</span>
+                 <div className="text-right">
+                    <p className="font-bold text-rose-400">${totalPurchases.toFixed(2)}</p>
+                    <p className="text-[10px] text-slate-500">Bs. {totalPurchasesBS.toFixed(2)}</p>
+                 </div>
               </div>
               <div className="flex justify-between items-center text-sm">
                  <span className="text-slate-400">Gastos Operativos:</span>
-                 <span className="font-bold text-rose-400">${totalExpenses.toFixed(2)}</span>
+                 <div className="text-right">
+                    <p className="font-bold text-rose-400">${totalExpenses.toFixed(2)}</p>
+                    <p className="text-[10px] text-slate-500">Bs. {totalExpensesBS.toFixed(2)}</p>
+                 </div>
               </div>
               <div className="pt-4 border-t border-slate-700 flex justify-between items-center">
                  <span className="font-bold">Utilidad Neta:</span>
-                 <span className={`text-xl font-black ${estimatedProfit >= 0 ? 'text-emerald-400' : 'text-rose-500'}`}>
-                   ${estimatedProfit.toFixed(2)}
-                 </span>
+                 <div className="text-right">
+                    <p className={`text-xl font-black ${estimatedProfit >= 0 ? 'text-emerald-400' : 'text-rose-500'}`}>
+                      ${estimatedProfit.toFixed(2)}
+                    </p>
+                    <p className={`text-xs font-bold ${estimatedProfitBS >= 0 ? 'text-emerald-500/70' : 'text-rose-500/70'}`}>
+                      Bs. {estimatedProfitBS.toFixed(2)}
+                    </p>
+                 </div>
               </div>
            </div>
         </div>

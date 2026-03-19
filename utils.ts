@@ -1,4 +1,9 @@
 
+export const calculateBS = (amountUSD: number, status: string, storedRate?: number, currentRate?: number): number => {
+  const rate = status === 'paid' ? (storedRate || currentRate || 0) : (currentRate || 0);
+  return amountUSD * rate;
+};
+
 export const parseNumber = (value: any): number => {
   if (value === null || value === undefined || value === '') return 0;
   if (typeof value === 'number') return value;

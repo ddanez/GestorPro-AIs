@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { Plus, ShoppingCart, Truck, Search, Trash2, ArrowLeft, CheckCircle2, PlusCircle, Edit3, Loader2, UserPlus, Box, X, CreditCard, Tag, Calculator } from 'lucide-react';
 import { Purchase, Supplier, Product, AppSettings, PurchaseItem } from '../types';
 import { dbService } from '../db';
-import { parseNumber, searchMatch } from '../utils';
+import { parseNumber, searchMatch, calculateBS } from '../utils';
 
 interface ExtendedPurchaseItem extends PurchaseItem {
   newSalePriceUSD: number;
@@ -77,8 +77,8 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
         supplierName: supplier?.name || 'Proveedor',
         items: cart.map(({ newSalePriceUSD, ...rest }) => rest),
         totalUSD: finalTotal,
-        totalBS: finalTotal * (settings.exchangeRate || 0),
-        exchangeRate: settings.exchangeRate || 0,
+        totalBS: calculateBS(finalTotal, isCredit ? 'pending' : 'paid', editingPurchase?.exchangeRate || settings.exchangeRate, settings.exchangeRate),
+        exchangeRate: (editingPurchase && editingPurchase.status === 'paid') ? editingPurchase.exchangeRate : (settings.exchangeRate || 0),
         status: isCredit ? 'pending' : 'paid',
         discountUSD: isDiscount ? discountVal : 0,
         initialPaymentUSD: isCredit ? initialPayment : finalTotal,
@@ -210,7 +210,7 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
                 </div>
                 <div className="text-right px-8">
                    <p className="text-xl font-black text-white leading-none">${(p.totalUSD || 0).toFixed(2)}</p>
-                   <p className="text-[10px] font-bold text-orange-500 mt-1">{((p.totalUSD || 0) * (p.exchangeRate || settings.exchangeRate)).toLocaleString()} Bs</p>
+                   <p className="text-[10px] font-bold text-orange-500 mt-1">{calculateBS(p.totalUSD || 0, p.status, p.exchangeRate, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs</p>
                 </div>
                 <button onClick={() => {
                   setEditingPurchase(p);
@@ -329,7 +329,7 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
                         </div>
                       </div>
                       <div className="px-1 text-right">
-                         <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{((item.quantity || 0) * (item.costUSD || 0) * settings.exchangeRate).toLocaleString()} Bs</p>
+                         <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{calculateBS((item.quantity || 0) * (item.costUSD || 0), 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs</p>
                       </div>
                    </div>
                 </div>
@@ -355,7 +355,7 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
                          <div className="animate-in zoom-in-95 mt-3">
                             <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Monto Descuento ($)</label>
                             <input type="number" lang="en-US" value={discountVal} onChange={(e) => setDiscountVal(parseNumber(e.target.value) || 0)} className="w-full bg-[#1e293b] border border-slate-700 rounded-xl p-3 text-sm font-black text-emerald-500 outline-none" />
-                            <p className="text-[9px] font-bold text-emerald-500 mt-1">{(discountVal * settings.exchangeRate).toLocaleString()} Bs</p>
+                            <p className="text-[9px] font-bold text-emerald-500 mt-1">{calculateBS(discountVal, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs</p>
                          </div>
                       )}
                    </div>
@@ -375,7 +375,7 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
                          <div className="animate-in zoom-in-95 mt-3">
                             <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Abono Inicial ($)</label>
                             <input type="number" lang="en-US" value={initialPayment} onChange={(e) => setInitialPayment(parseNumber(e.target.value) || 0)} className="w-full bg-[#1e293b] border border-slate-700 rounded-xl p-3 text-sm font-black text-white outline-none" />
-                            <p className="text-[9px] font-bold text-orange-500 mt-1">{(initialPayment * settings.exchangeRate).toLocaleString()} Bs</p>
+                            <p className="text-[9px] font-bold text-orange-500 mt-1">{calculateBS(initialPayment, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs</p>
                          </div>
                       )}
                    </div>
@@ -404,7 +404,7 @@ const Purchases: React.FC<Props> = ({ purchases, setPurchases, suppliers, setSup
                <p className="text-[7px] md:text-[8px] font-black text-orange-500 uppercase leading-none tracking-widest">Inversión Total</p>
                <div className="flex flex-col md:flex-row md:items-baseline md:gap-3 mt-1 overflow-hidden">
                   <p className="text-lg md:text-2xl font-black text-white tracking-tighter leading-none truncate">${(finalTotal || 0).toFixed(2)}</p>
-                  <p className="text-[9px] md:text-[11px] font-black text-orange-500 truncate">{(finalTotal * settings.exchangeRate).toLocaleString()} Bs</p>
+                  <p className="text-[9px] md:text-[11px] font-black text-orange-500 truncate">{calculateBS(finalTotal, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs</p>
                </div>
             </div>
          </div>

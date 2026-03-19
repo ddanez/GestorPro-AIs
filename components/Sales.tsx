@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { Plus, Search, Tag, UserPlus, ShoppingCart, Trash2, X, CheckCircle2, MessageCircle, UserPlus2, PackageSearch, CreditCard, Loader2, Edit2, AlertTriangle, Filter, Calendar, User as UserIcon, History, Wallet } from 'lucide-react';
 import { Sale, Customer, Product, AppSettings, SaleItem, CompanyInfo, Seller } from '../types';
 import { dbService } from '../db';
-import { parseNumber, searchMatch } from '../utils';
+import { parseNumber, searchMatch, calculateBS } from '../utils';
 import { TicketModal } from './TicketModal';
 
 interface Props {
@@ -158,8 +158,8 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
         customerName: customer?.name || 'Venta Rápida',
         items: cart,
         totalUSD: finalTotal,
-        totalBS: finalTotal * (settings.exchangeRate || 0),
-        exchangeRate: settings.exchangeRate || 0,
+        totalBS: calculateBS(finalTotal, isCredit ? 'pending' : 'paid', editingSale?.exchangeRate || settings.exchangeRate, settings.exchangeRate),
+        exchangeRate: (editingSale && editingSale.status === 'paid') ? editingSale.exchangeRate : (settings.exchangeRate || 0),
         status: isCredit ? 'pending' : 'paid',
         type: saleType,
         discountUSD: isDiscount ? discountVal : 0,
@@ -416,7 +416,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
             </div>
             <div className="text-right flex-1">
               <p className="text-sm font-black text-white">${(sale.totalUSD || 0).toFixed(2)}</p>
-              <p className="text-[8px] font-bold text-orange-500">{((sale.totalUSD || 0) * (sale.exchangeRate || settings.exchangeRate)).toLocaleString()} Bs</p>
+              <p className="text-[8px] font-bold text-orange-500">{calculateBS(sale.totalUSD || 0, sale.status, sale.exchangeRate, settings.exchangeRate).toLocaleString()} Bs</p>
             </div>
             <div className="flex gap-2">
               <button onClick={() => {
@@ -626,11 +626,11 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                                   className="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[10px] font-black text-emerald-500 outline-none"
                                 />
                              </div>
-                             <span className="text-[8px] font-bold text-slate-500 mt-1">{((item.priceUSD || 0) * settings.exchangeRate).toFixed(2)} Bs</span>
+                             <span className="text-[8px] font-bold text-slate-500 mt-1">{calculateBS(item.priceUSD || 0, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs</span>
                           </div>
                           <div className="text-right">
                              <p className="font-black text-[11px] text-white">${((item.quantity || 0) * (item.priceUSD || 0)).toFixed(2)}</p>
-                             <p className="font-bold text-[8px] text-orange-500">{((item.quantity || 0) * (item.priceUSD || 0) * settings.exchangeRate).toLocaleString()} Bs</p>
+                             <p className="font-bold text-[8px] text-orange-500">{calculateBS((item.quantity || 0) * (item.priceUSD || 0), 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs</p>
                           </div>
                        </div>
                     </div>
@@ -654,7 +654,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                         {isDiscount && (
                            <div className="animate-in zoom-in-95">
                               <input type="number" step="0.01" lang="en-US" value={discountVal} onChange={(e) => setDiscountVal(parseNumber(e.target.value) || 0)} className="w-full bg-[#1e293b] border border-slate-700 rounded-xl p-2 text-xs font-black text-emerald-500 outline-none" placeholder="Monto $" />
-                              <p className="text-[9px] font-bold text-emerald-500 mt-1">{(discountVal * settings.exchangeRate).toLocaleString()} Bs</p>
+                              <p className="text-[9px] font-bold text-emerald-500 mt-1">{calculateBS(discountVal, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs</p>
                            </div>
                         )}
                      </div>
@@ -673,7 +673,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                         {isCredit && (
                            <div className="animate-in zoom-in-95">
                               <input type="number" step="0.01" lang="en-US" value={initialPayment} onChange={(e) => setInitialPayment(parseNumber(e.target.value) || 0)} className="w-full bg-[#1e293b] border border-slate-700 rounded-xl p-2 text-xs font-black text-white outline-none" placeholder="Abono $" />
-                              <p className="text-[9px] font-bold text-orange-500 mt-1">{(initialPayment * settings.exchangeRate).toLocaleString()} Bs</p>
+                              <p className="text-[9px] font-bold text-orange-500 mt-1">{calculateBS(initialPayment, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs</p>
                            </div>
                         )}
                      </div>
@@ -704,7 +704,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                      <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Total Factura</span>
                      <div className="flex items-baseline gap-2">
                         <span className="text-3xl font-black text-white tracking-tighter leading-none">${(finalTotal || 0).toFixed(2)}</span>
-                        <span className="text-[10px] font-black text-orange-500 uppercase">{(finalTotal * settings.exchangeRate).toLocaleString()} Bs</span>
+                        <span className="text-[10px] font-black text-orange-500 uppercase">{calculateBS(finalTotal, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs</span>
                      </div>
                   </div>
                   <button onClick={finishSale} disabled={cart.length === 0 || !selectedCustomerId || isSaving} className="bg-orange-500 hover:bg-orange-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl shadow-orange-500/20 active:scale-95 transition-all disabled:opacity-50">
