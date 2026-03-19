@@ -563,9 +563,9 @@ const Manufacturing: React.FC<ManufacturingProps> = ({ settings }) => {
             </div>
 
             {/* Footer Summary */}
-            <div className="p-6 bg-slate-900/50 border-t border-slate-700">
+            <div className="p-4 bg-slate-900/50 border-t border-slate-700">
               {/* Top Row: Editable Fields */}
-              <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="space-y-1">
                   <label className="text-[8px] font-black text-slate-500 uppercase ml-1">% Gana</label>
                   <input 
@@ -597,12 +597,12 @@ const Manufacturing: React.FC<ManufacturingProps> = ({ settings }) => {
               </div>
 
               {/* Bottom Section: Actions Left, Stats Right */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-2 gap-6">
                 {/* Left: Buttons */}
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 justify-center">
                   <button 
                     onClick={calculateRecipe}
-                    className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-3 rounded-xl text-[10px] uppercase tracking-widest transition-all"
+                    className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-2.5 rounded-xl text-[9px] uppercase tracking-widest transition-all"
                   >
                     Calcular
                   </button>
@@ -617,7 +617,7 @@ const Manufacturing: React.FC<ManufacturingProps> = ({ settings }) => {
                       loadData();
                       setShowRecipeModal(false);
                     }}
-                    className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-black rounded-xl text-[10px] uppercase tracking-widest transition-all"
+                    className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-black rounded-xl text-[9px] uppercase tracking-widest transition-all"
                   >
                     Clonar
                   </button>
@@ -625,48 +625,48 @@ const Manufacturing: React.FC<ManufacturingProps> = ({ settings }) => {
                     onClick={() => {
                       if (newRecipe.id) handleDeleteRecipe(newRecipe.id);
                     }}
-                    className="w-full py-3 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white font-black rounded-xl text-[10px] uppercase tracking-widest transition-all"
+                    className="w-full py-2.5 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white font-black rounded-xl text-[9px] uppercase tracking-widest transition-all"
                   >
                     Borrar
                   </button>
                 </div>
 
-                {/* Right: 6 Calculations */}
-                <div className="grid grid-cols-1 gap-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-black text-slate-500 uppercase">Costo:</span>
-                    <span className="text-xs font-black text-white">${newRecipe.totalCostUSD?.toFixed(2)}</span>
+                {/* Right: 6 Calculations + Save Button */}
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 gap-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-black text-slate-500 uppercase">Costo:</span>
+                      <span className="text-[11px] font-black text-white">${newRecipe.totalCostUSD?.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-black text-slate-500 uppercase">Costo/Por:</span>
+                      <span className="text-[11px] font-black text-white">${newRecipe.costPerPortionUSD?.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-black text-slate-500 uppercase">Venta:</span>
+                      <span className="text-[11px] font-black text-emerald-400">${newRecipe.totalSaleUSD?.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-black text-slate-500 uppercase">Gana:</span>
+                      <span className="text-[11px] font-black text-white">${newRecipe.totalProfitUSD?.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-black text-slate-500 uppercase">Gana/Por:</span>
+                      <span className="text-[11px] font-black text-white">${newRecipe.profitPerPortionUSD?.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-black text-slate-500 uppercase">PVP:</span>
+                      <span className="text-xs font-black text-rose-500">${newRecipe.pricePerPortionUSD?.toFixed(2)}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-black text-slate-500 uppercase">Costo/Porción:</span>
-                    <span className="text-xs font-black text-white">${newRecipe.costPerPortionUSD?.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-black text-slate-500 uppercase">Total Venta:</span>
-                    <span className="text-xs font-black text-emerald-400">${newRecipe.totalSaleUSD?.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-black text-slate-500 uppercase">Ganancia:</span>
-                    <span className="text-xs font-black text-white">${newRecipe.totalProfitUSD?.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-black text-slate-500 uppercase">Gana/Porción:</span>
-                    <span className="text-xs font-black text-white">${newRecipe.profitPerPortionUSD?.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-black text-slate-500 uppercase">PVP:</span>
-                    <span className="text-sm font-black text-rose-500">${newRecipe.pricePerPortionUSD?.toFixed(2)}</span>
-                  </div>
+                  
+                  <button 
+                    onClick={handleSaveRecipe}
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-[9px] uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20"
+                  >
+                    Guardar Receta
+                  </button>
                 </div>
-              </div>
-
-              <div className="mt-8">
-                <button 
-                  onClick={handleSaveRecipe}
-                  className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl text-xs uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20"
-                >
-                  Guardar Receta
-                </button>
               </div>
             </div>
           </div>
