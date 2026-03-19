@@ -47,10 +47,14 @@ const Manufacturing: React.FC<ManufacturingProps> = ({ settings }) => {
 
   const loadData = useCallback(async () => {
     try {
+      console.log("Cargando datos de manufactura...");
+      await dbService.init();
       const [ing, rec] = await Promise.all([
         dbService.getAll<Ingredient>('ingredients'),
         dbService.getAll<Recipe>('recipes')
       ]);
+      console.log("Ingredientes cargados:", ing?.length || 0);
+      console.log("Recetas cargadas:", rec?.length || 0);
       setIngredients(ing || []);
       setRecipes(rec || []);
     } catch (err) {
@@ -63,18 +67,37 @@ const Manufacturing: React.FC<ManufacturingProps> = ({ settings }) => {
   }, [loadData]);
 
   const handleSaveIngredient = async () => {
-    if (!newIngredient.name || !newIngredient.quantity || !newIngredient.priceUSD) return;
-    const ingredient: Ingredient = {
-      id: (newIngredient as Ingredient).id || crypto.randomUUID(),
-      name: newIngredient.name,
-      quantity: Number(newIngredient.quantity),
-      unit: newIngredient.unit as any,
-      priceUSD: Number(newIngredient.priceUSD)
-    };
-    await dbService.put('ingredients', ingredient);
-    setShowIngredientModal(false);
-    setNewIngredient({ name: '', quantity: 0, unit: 'gramos', priceUSD: 0 });
-    loadData();
+    if (!newIngredient.name?.trim()) {
+      alert('EL NOMBRE ES REQUERIDO');
+      return;
+    }
+    if (newIngredient.quantity === undefined || newIngredient.quantity === null) {
+      alert('LA CANTIDAD ES REQUERIDA');
+      return;
+    }
+    if (newIngredient.priceUSD === undefined || newIngredient.priceUSD === null) {
+      alert('EL PRECIO ES REQUERIDO');
+      return;
+    }
+
+    try {
+      console.log("Guardando ingrediente:", newIngredient);
+      const ingredient: Ingredient = {
+        id: (newIngredient as Ingredient).id || crypto.randomUUID(),
+        name: newIngredient.name.trim(),
+        quantity: Number(newIngredient.quantity),
+        unit: newIngredient.unit as any,
+        priceUSD: Number(newIngredient.priceUSD)
+      };
+      await dbService.put('ingredients', ingredient);
+      console.log("Ingrediente guardado con éxito");
+      setShowIngredientModal(false);
+      setNewIngredient({ name: '', quantity: 0, unit: 'gramos', priceUSD: 0 });
+      await loadData();
+    } catch (err) {
+      console.error("Error saving ingredient:", err);
+      alert('ERROR AL GUARDAR EL INGREDIENTE');
+    }
   };
 
   const handleDeleteIngredient = async (id: string) => {
@@ -141,26 +164,42 @@ const Manufacturing: React.FC<ManufacturingProps> = ({ settings }) => {
   };
 
   const handleSaveRecipe = async () => {
-    if (!newRecipe.name || !newRecipe.ingredients?.length) return;
-    const recipe: Recipe = {
-      ...(newRecipe as Recipe),
-      id: (newRecipe as Recipe).id || crypto.randomUUID()
-    };
-    await dbService.put('recipes', recipe);
-    setShowRecipeModal(false);
-    setNewRecipe({
-      name: '',
-      ingredients: [],
-      profitPercentage: 0,
-      portions: 1,
-      pricePerPortionUSD: 0,
-      totalCostUSD: 0,
-      totalProfitUSD: 0,
-      totalSaleUSD: 0,
-      costPerPortionUSD: 0,
-      profitPerPortionUSD: 0
-    });
-    loadData();
+    if (!newRecipe.name?.trim()) {
+      alert('EL NOMBRE DE LA RECETA ES REQUERIDO');
+      return;
+    }
+    if (!newRecipe.ingredients?.length) {
+      alert('LA RECETA DEBE TENER AL MENOS UN INGREDIENTE');
+      return;
+    }
+
+    try {
+      console.log("Guardando receta:", newRecipe);
+      const recipe: Recipe = {
+        ...(newRecipe as Recipe),
+        id: (newRecipe as Recipe).id || crypto.randomUUID(),
+        name: newRecipe.name.trim()
+      };
+      await dbService.put('recipes', recipe);
+      console.log("Receta guardada con éxito");
+      setShowRecipeModal(false);
+      setNewRecipe({
+        name: '',
+        ingredients: [],
+        profitPercentage: 0,
+        portions: 1,
+        pricePerPortionUSD: 0,
+        totalCostUSD: 0,
+        totalProfitUSD: 0,
+        totalSaleUSD: 0,
+        costPerPortionUSD: 0,
+        profitPerPortionUSD: 0
+      });
+      await loadData();
+    } catch (err) {
+      console.error("Error saving recipe:", err);
+      alert('ERROR AL GUARDAR LA RECETA');
+    }
   };
 
   const handleDeleteRecipe = async (id: string) => {
