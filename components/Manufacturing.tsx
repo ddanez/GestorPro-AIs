@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, Search, Trash2, Save, X, ChefHat, Scale, Droplets, Box, 
-  Calculator, Copy, Printer, Trash, ChevronRight, Info
+  Calculator, Copy, Printer, Trash, ChevronRight, Info, Edit2
 } from 'lucide-react';
 import { Ingredient, Recipe, RecipeIngredient, AppSettings } from '../types';
 import { dbService } from '../db';
@@ -297,9 +297,20 @@ const Manufacturing: React.FC<ManufacturingProps> = ({ settings }) => {
                     <p className="text-[10px] font-bold text-slate-500 uppercase">{ing.quantity} {ing.unit}</p>
                   </div>
                 </div>
-                <button onClick={() => handleDeleteIngredient(ing.id)} className="p-2 text-slate-500 hover:text-rose-500 transition-colors">
-                  <Trash2 size={16} />
-                </button>
+                  <div className="flex items-center gap-1">
+                    <button 
+                      onClick={() => {
+                        setNewIngredient(ing);
+                        setShowIngredientModal(true);
+                      }}
+                      className="p-2 text-slate-500 hover:text-orange-500 transition-colors"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                    <button onClick={() => handleDeleteIngredient(ing.id)} className="p-2 text-slate-500 hover:text-rose-500 transition-colors">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
               </div>
               <div className="flex justify-between items-center pt-3 border-t border-slate-700/50">
                 <p className="text-[10px] font-black text-slate-500 uppercase">Precio Compra</p>
@@ -381,7 +392,9 @@ const Manufacturing: React.FC<ManufacturingProps> = ({ settings }) => {
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-[#1e293b] w-full max-w-md rounded-[2.5rem] border border-slate-700 shadow-2xl animate-in zoom-in-95 overflow-hidden">
             <div className="p-8 border-b border-slate-700 flex justify-between items-center">
-              <h3 className="text-xl font-black uppercase tracking-tighter">Nuevo Ingrediente</h3>
+              <h3 className="text-xl font-black uppercase tracking-tighter">
+                {newIngredient.id ? 'Editar Ingrediente' : 'Nuevo Ingrediente'}
+              </h3>
               <button onClick={() => setShowIngredientModal(false)} className="text-slate-500 hover:text-white"><X size={24} /></button>
             </div>
             <div className="p-8 space-y-6">
