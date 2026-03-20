@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { Trophy, Star, X, Gift } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface CelebrationModalProps {
   isOpen: boolean;
