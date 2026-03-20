@@ -254,10 +254,14 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
             const promo = activePromos.find(p => p.isActive && (p.productId === item.productId || !p.productId));
             if (promo) {
               let cp = customerPromos.find(x => x.customerId === selectedCustomerId && x.promotionId === promo.id);
+              
               if (cp) {
+                // Si ya existe, actualizamos
                 cp.currentCount += (item.quantity || 0);
                 cp.lastUpdate = new Date().toISOString();
-              } else {
+                await dbService.put('customer_promotions', cp);
+              } else if (promo.enrollmentType === 'all') {
+                // Si no existe pero la promo es para TODOS, creamos el registro
                 cp = {
                   id: crypto.randomUUID(),
                   customerId: selectedCustomerId,
@@ -266,9 +270,9 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                   totalRedeemed: 0,
                   lastUpdate: new Date().toISOString()
                 };
-                customerPromos.push(cp);
+                await dbService.put('customer_promotions', cp);
               }
-              await dbService.put('customer_promotions', cp);
+              // Si es MANUAL y no existe el registro, NO hacemos nada (el cliente no está inscrito)
             }
           }
         } catch (promoErr) {

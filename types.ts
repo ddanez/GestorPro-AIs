@@ -202,6 +202,7 @@ export interface Promotion {
   name: string;
   description: string;
   type: 'docena_13' | 'discount' | 'combo';
+  enrollmentType: 'all' | 'manual';
   productId?: string;
   requiredQuantity: number;
   rewardQuantity: number;

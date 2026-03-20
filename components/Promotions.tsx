@@ -25,6 +25,7 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products }
     name: '',
     description: '',
     type: 'docena_13',
+    enrollmentType: 'manual',
     requiredQuantity: 12,
     rewardQuantity: 1,
     isActive: true
@@ -36,7 +37,12 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products }
         dbService.getAll<Promotion>('promotions'),
         dbService.getAll<CustomerPromotion>('customer_promotions')
       ]);
-      setPromotions(p || []);
+      // Ensure enrollmentType exists for old promos
+      const updatedP = (p || []).map(item => ({
+        ...item,
+        enrollmentType: item.enrollmentType || 'manual'
+      }));
+      setPromotions(updatedP);
       setCustomerPromotions(cp || []);
     } catch (err) {
       console.error("Error al cargar promociones:", err);
@@ -59,6 +65,7 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products }
         name: newPromo.name.trim(),
         description: newPromo.description || '',
         type: newPromo.type as any,
+        enrollmentType: (newPromo.enrollmentType as any) || 'manual',
         productId: newPromo.productId,
         requiredQuantity: Number(newPromo.requiredQuantity) || 12,
         rewardQuantity: Number(newPromo.rewardQuantity) || 1,
@@ -71,6 +78,7 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products }
         name: '',
         description: '',
         type: 'docena_13',
+        enrollmentType: 'manual',
         requiredQuantity: 12,
         rewardQuantity: 1,
         isActive: true
@@ -228,8 +236,8 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products }
                   <p className="text-xl font-black text-orange-500">{promo.rewardQuantity}</p>
                 </div>
                 <div className="bg-slate-800/50 p-4 rounded-2xl text-center">
-                  <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">TIPO</p>
-                  <p className="text-[10px] font-black text-white uppercase">{promo.type.replace('_', ' ')}</p>
+                  <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">ACCESO</p>
+                  <p className="text-[10px] font-black text-white uppercase">{promo.enrollmentType === 'all' ? 'TODOS' : 'MANUAL'}</p>
                 </div>
               </div>
 
@@ -328,6 +336,23 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products }
                   value={newPromo.description}
                   onChange={(e) => setNewPromo({...newPromo, description: e.target.value})}
                 />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tipo de Inscripción</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    onClick={() => setNewPromo({...newPromo, enrollmentType: 'manual'})}
+                    className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${newPromo.enrollmentType === 'manual' ? 'bg-orange-500 border-orange-400 text-white' : 'bg-[#0f172a] border-slate-700 text-slate-500'}`}
+                  >
+                    Manual (Solo Invitados)
+                  </button>
+                  <button 
+                    onClick={() => setNewPromo({...newPromo, enrollmentType: 'all'})}
+                    className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${newPromo.enrollmentType === 'all' ? 'bg-orange-500 border-orange-400 text-white' : 'bg-[#0f172a] border-slate-700 text-slate-500'}`}
+                  >
+                    Automática (Todos)
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
