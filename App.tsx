@@ -279,7 +279,7 @@ const App: React.FC = () => {
           {activeTab === AppTab.CUSTOMERS && <Contacts type="customers" items={customers} setItems={setCustomers} relatedData={sales} payments={payments} settings={settings} />}
           {activeTab === AppTab.SUPPLIERS && <Contacts type="suppliers" items={suppliers} setItems={setSuppliers} relatedData={purchases} payments={payments} settings={settings} />}
           { activeTab === AppTab.MANUFACTURING && <Manufacturing settings={settings} /> }
-          { activeTab === AppTab.PROMOTIONS && <Promotions settings={settings} customers={customers} products={products} /> }
+          { activeTab === AppTab.PROMOTIONS && <Promotions settings={settings} customers={customers} products={products} setProducts={setProducts} /> }
           {activeTab === AppTab.CXC && <Accounts type="cxc" items={sales.filter(s => s.status === 'pending')} settings={settings} company={company} onUpdate={loadData} customers={customers} suppliers={suppliers} />}
           {activeTab === AppTab.CXP && <Accounts type="cxp" items={purchases.filter(p => p.status === 'pending')} settings={settings} company={company} onUpdate={loadData} customers={customers} suppliers={suppliers} />}
           {activeTab === AppTab.REPORTS && <Reports sales={sales} purchases={purchases} expenses={expenses} products={products} customers={customers} suppliers={suppliers} settings={settings} movements={movements} />}

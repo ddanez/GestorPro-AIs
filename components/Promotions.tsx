@@ -11,9 +11,10 @@ interface PromotionsProps {
   settings: AppSettings;
   customers: Customer[];
   products: Product[];
+  setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
 }
 
-const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products }) => {
+const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products, setProducts }) => {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [customerPromotions, setCustomerPromotions] = useState<CustomerPromotion[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,6 +22,8 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products }
   const [showRedeemModal, setShowRedeemModal] = useState(false);
   const [selectedPromo, setSelectedPromo] = useState<Promotion | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
   const [newPromo, setNewPromo] = useState<Partial<Promotion>>({
     name: '',
     description: '',
@@ -90,13 +93,63 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products }
     }
   };
 
+  const handleEnroll = async (customerId: string, promoId: string) => {
+    try {
+      const existing = customerPromotions.find(cp => cp.customerId === customerId && cp.promotionId === promoId);
+      if (existing) return;
+
+      const updated: CustomerPromotion = {
+        id: crypto.randomUUID(),
+        customerId,
+        promotionId: promoId,
+        currentCount: 0,
+        totalRedeemed: 0,
+        lastUpdate: new Date().toISOString()
+      };
+
+      await dbService.put('customer_promotions', updated);
+      loadData();
+    } catch (err) {
+      console.error("Error al inscribir cliente:", err);
+    }
+  };
+
   const handleAddPurchase = async (customerId: string, promoId: string) => {
+    setIsSaving(true);
     try {
       const existing = customerPromotions.find(cp => cp.customerId === customerId && cp.promotionId === promoId);
       const promo = promotions.find(p => p.id === promoId);
       
       if (!promo) return;
 
+      // 1. Descontar stock si hay un producto vinculado
+      if (promo.productId) {
+        const product = products.find(p => p.id === promo.productId);
+        if (product) {
+          if (product.stock <= 0) {
+            alert('SIN EXISTENCIAS EN INVENTARIO');
+            return;
+          }
+
+          const updatedProduct = { ...product, stock: product.stock - 1 };
+          await dbService.put('products', updatedProduct);
+          setProducts(prev => prev.map(p => p.id === product.id ? updatedProduct : p));
+
+          // Registrar movimiento
+          await dbService.put('movements', {
+            id: crypto.randomUUID(),
+            date: new Date().toISOString(),
+            productId: product.id,
+            productName: product.name,
+            type: 'sale',
+            quantity: -1,
+            stockAfter: updatedProduct.stock,
+            relatedId: promo.id
+          });
+        }
+      }
+
+      // 2. Actualizar contador de promoción
       let updated: CustomerPromotion;
       if (existing) {
         updated = {
@@ -119,10 +172,13 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products }
       loadData();
     } catch (err) {
       console.error("Error al registrar compra:", err);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleRedeem = async (cpId: string) => {
+    setIsSaving(true);
     try {
       const cp = customerPromotions.find(item => item.id === cpId);
       const promo = promotions.find(p => p.id === cp?.promotionId);
@@ -134,6 +190,34 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products }
         return;
       }
 
+      // 1. Descontar stock del obsequio si hay un producto vinculado
+      if (promo.productId) {
+        const product = products.find(p => p.id === promo.productId);
+        if (product) {
+          if (product.stock <= 0) {
+            alert('SIN EXISTENCIAS PARA EL OBSEQUIO');
+            return;
+          }
+
+          const updatedProduct = { ...product, stock: product.stock - 1 };
+          await dbService.put('products', updatedProduct);
+          setProducts(prev => prev.map(p => p.id === product.id ? updatedProduct : p));
+
+          // Registrar movimiento como obsequio
+          await dbService.put('movements', {
+            id: crypto.randomUUID(),
+            date: new Date().toISOString(),
+            productId: product.id,
+            productName: product.name,
+            type: 'obsequio',
+            quantity: -1,
+            stockAfter: updatedProduct.stock,
+            relatedId: promo.id
+          });
+        }
+      }
+
+      // 2. Actualizar contador
       const updated: CustomerPromotion = {
         ...cp,
         currentCount: cp.currentCount - promo.requiredQuantity,
@@ -146,6 +230,8 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products }
       setShowRedeemModal(false);
     } catch (err) {
       console.error("Error al canjear promoción:", err);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -252,7 +338,7 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products }
                     }}
                     className="text-[10px] font-black text-orange-500 uppercase tracking-widest hover:underline"
                   >
-                    REGISTRAR COMPRA
+                    INSCRIBIR / REGISTRAR
                   </button>
                 </div>
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
@@ -275,21 +361,26 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products }
                               <p className="text-[8px] font-bold text-slate-500 uppercase">{cp.currentCount} / {promo.requiredQuantity}</p>
                             </div>
                           </div>
-                          {isReady ? (
-                            <button 
-                              onClick={() => handleRedeem(cp.id)}
-                              className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-1"
-                            >
-                              <Gift size={12} /> CANJEAR
-                            </button>
-                          ) : (
-                            <button 
-                              onClick={() => handleAddPurchase(cp.customerId, promo.id)}
-                              className="bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-lg transition-all"
-                            >
-                              <Plus size={14} />
-                            </button>
-                          )}
+                          <div className="flex gap-2">
+                            {isReady ? (
+                              <button 
+                                disabled={isSaving}
+                                onClick={() => handleRedeem(cp.id)}
+                                className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-1 disabled:opacity-50"
+                              >
+                                <Gift size={12} /> CANJEAR
+                              </button>
+                            ) : (
+                              <button 
+                                disabled={isSaving}
+                                onClick={() => handleAddPurchase(cp.customerId, promo.id)}
+                                className="bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-lg transition-all disabled:opacity-50"
+                                title="Registrar Compra (+1 y descuento stock)"
+                              >
+                                <Plus size={14} />
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
                           <div 
@@ -456,19 +547,34 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products }
                 </div>
               </div>
 
-              <button 
-                disabled={!selectedCustomer}
-                onClick={() => {
-                  if (selectedCustomer) {
-                    handleAddPurchase(selectedCustomer.id, selectedPromo.id);
-                    setShowRedeemModal(false);
-                    setSelectedCustomer(null);
-                  }
-                }}
-                className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black py-5 rounded-2xl transition-all shadow-xl shadow-orange-500/20 uppercase text-[10px] tracking-[0.2em]"
-              >
-                REGISTRAR COMPRA
-              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <button 
+                  disabled={!selectedCustomer || isSaving}
+                  onClick={() => {
+                    if (selectedCustomer) {
+                      handleEnroll(selectedCustomer.id, selectedPromo.id);
+                      setShowRedeemModal(false);
+                      setSelectedCustomer(null);
+                    }
+                  }}
+                  className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white font-black py-4 rounded-xl transition-all uppercase text-[8px] tracking-widest border border-slate-700"
+                >
+                  SOLO INSCRIBIR (0)
+                </button>
+                <button 
+                  disabled={!selectedCustomer || isSaving}
+                  onClick={() => {
+                    if (selectedCustomer) {
+                      handleAddPurchase(selectedCustomer.id, selectedPromo.id);
+                      setShowRedeemModal(false);
+                      setSelectedCustomer(null);
+                    }
+                  }}
+                  className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-black py-4 rounded-xl transition-all shadow-lg shadow-orange-500/20 uppercase text-[8px] tracking-widest"
+                >
+                  REGISTRAR COMPRA (+1)
+                </button>
+              </div>
             </div>
           </div>
         </div>
