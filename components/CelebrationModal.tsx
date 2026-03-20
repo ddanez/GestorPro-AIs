@@ -16,16 +16,30 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({ isOpen, onCl
   useEffect(() => {
     if (isOpen) {
       setShouldRender(true);
-      // Play fanfare sound
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(err => console.log('Audio play blocked:', err));
-      }
     } else {
       const timer = setTimeout(() => setShouldRender(false), 300);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
+
+  // Separate effect to handle audio playback once rendered
+  useEffect(() => {
+    if (isOpen && shouldRender && audioRef.current) {
+      audioRef.current.volume = 0.5; // Set volume to 50%
+      const playAudio = async () => {
+        try {
+          audioRef.current!.currentTime = 0;
+          await audioRef.current!.play();
+        } catch (err) {
+          console.log('Audio play blocked or failed:', err);
+        }
+      };
+      
+      // Small delay to ensure DOM is ready
+      const timer = setTimeout(playAudio, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, shouldRender]);
 
   if (!shouldRender) return null;
 
@@ -38,7 +52,7 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({ isOpen, onCl
       
       <audio 
         ref={audioRef} 
-        src="https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3" 
+        src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3" 
         preload="auto"
       />
 
