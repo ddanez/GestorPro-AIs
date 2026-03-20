@@ -5,6 +5,7 @@ import { Sale, Customer, Product, AppSettings, SaleItem, CompanyInfo, Seller, Pr
 import { dbService } from '../db';
 import { parseNumber, searchMatch, calculateBS } from '../utils';
 import { TicketModal } from './TicketModal';
+import { CelebrationModal } from './CelebrationModal';
 
 interface Props {
   sales: Sale[];
@@ -36,6 +37,10 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
   const [showMermaPrompt, setShowMermaPrompt] = useState<{ productId: string, diff: number, originalQty: number } | null>(null);
   const [mermasAcumuladas, setMermasAcumuladas] = useState<Record<string, number>>({});
   const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+
+  // Estados para celebración
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationData, setCelebrationData] = useState({ customerName: '', promotionName: '' });
 
   // Estados para filtros
   const [filterType, setFilterType] = useState<'last' | 'date' | 'customer'>('last');
@@ -235,6 +240,7 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
         try {
           const activePromos = await dbService.getAll<Promotion>('promotions');
           const customerPromos = await dbService.getAll<CustomerPromotion>('customer_promotions');
+          let completedPromotion: { customerName: string, promotionName: string } | null = null;
           
           // 1. Revertir cantidades de la venta anterior si estamos editando
           if (editingSale && editingSale.type === 'venta' && editingSale.customerId === selectedCustomerId) {
@@ -257,9 +263,18 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
               
               if (cp) {
                 // Si ya existe, actualizamos
+                const oldCount = cp.currentCount;
                 cp.currentCount += (item.quantity || 0);
                 cp.lastUpdate = new Date().toISOString();
                 await dbService.put('customer_promotions', cp);
+
+                // Verificar si completó la meta en esta venta
+                if (oldCount < promo.requiredQuantity && cp.currentCount >= promo.requiredQuantity) {
+                  completedPromotion = {
+                    customerName: customer?.name || 'Cliente',
+                    promotionName: promo.name
+                  };
+                }
               } else if (promo.enrollmentType === 'all') {
                 // Si no existe pero la promo es para TODOS, creamos el registro
                 cp = {
@@ -271,9 +286,21 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                   lastUpdate: new Date().toISOString()
                 };
                 await dbService.put('customer_promotions', cp);
+
+                // Verificar si completó la meta al crear (poco probable pero posible si requiredQuantity es pequeño)
+                if (cp.currentCount >= promo.requiredQuantity) {
+                  completedPromotion = {
+                    customerName: customer?.name || 'Cliente',
+                    promotionName: promo.name
+                  };
+                }
               }
-              // Si es MANUAL y no existe el registro, NO hacemos nada (el cliente no está inscrito)
             }
+          }
+
+          if (completedPromotion) {
+            setCelebrationData(completedPromotion);
+            setShowCelebration(true);
           }
         } catch (promoErr) {
           console.error("Error al procesar promociones:", promoErr);
@@ -796,6 +823,13 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
         </div>
       )}
       <TicketModal isOpen={!!ticketData} onClose={() => setTicketData(null)} data={ticketData} company={company} settings={settings} />
+      
+      <CelebrationModal 
+        isOpen={showCelebration} 
+        onClose={() => setShowCelebration(false)}
+        customerName={celebrationData.customerName}
+        promotionName={celebrationData.promotionName}
+      />
 
       {/* PROMPT DE MERMA */}
       {showMermaPrompt && (

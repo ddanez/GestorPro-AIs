@@ -1,10 +1,11 @@
 
 import React, { useState, useMemo } from 'react';
-import { Plus, Search, User, Phone, Trash2, Edit2, X, UserCheck, Mail, Loader2, History, TrendingUp, Wallet, Receipt, ArrowRight } from 'lucide-react';
-import { Customer, Supplier, Seller, AppSettings, Sale, Purchase, CompanyInfo } from '../types';
+import { Plus, Search, User, Phone, Trash2, Edit2, X, UserCheck, Mail, Loader2, History, TrendingUp, Wallet, Receipt, ArrowRight, Gift, Star } from 'lucide-react';
+import { Customer, Supplier, Seller, AppSettings, Sale, Purchase, CompanyInfo, Promotion, CustomerPromotion } from '../types';
 import { dbService } from '../db';
 import { TicketModal } from './TicketModal';
 import { calculateBS } from '../utils';
+import { useEffect } from 'react';
 
 interface Props {
   type: 'customers' | 'suppliers' | 'sellers';
@@ -25,6 +26,27 @@ export const Contacts: React.FC<Props> = ({ type, items, setItems, relatedData, 
   // Estados para el historial
   const [historyItem, setHistoryItem] = useState<any>(null);
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [customerPromotions, setCustomerPromotions] = useState<CustomerPromotion[]>([]);
+
+  // Cargar datos de promociones cuando se abre el historial de un cliente
+  useEffect(() => {
+    if (historyItem && type === 'customers') {
+      const loadPromos = async () => {
+        try {
+          const [p, cp] = await Promise.all([
+            dbService.getAll<Promotion>('promotions'),
+            dbService.getAll<CustomerPromotion>('customer_promotions')
+          ]);
+          setPromotions(p || []);
+          setCustomerPromotions(cp.filter(item => item.customerId === historyItem.id) || []);
+        } catch (err) {
+          console.error("Error al cargar promociones del cliente:", err);
+        }
+      };
+      loadPromos();
+    }
+  }, [historyItem, type]);
 
   const filteredItems = useMemo(() => {
     return items.filter(i => 
@@ -261,6 +283,63 @@ export const Contacts: React.FC<Props> = ({ type, items, setItems, relatedData, 
                        </div>
                     </div>
                  </div>
+
+                 {/* Programas de Fidelidad (Solo para Clientes) */}
+                 {type === 'customers' && customerPromotions.length > 0 && (
+                    <div className="bg-[#1e293b] rounded-[2rem] border border-slate-700 overflow-hidden shadow-xl mb-6">
+                       <div className="p-4 border-b border-slate-700/50 bg-slate-800/30 flex justify-between items-center">
+                          <h3 className="text-[9px] font-black uppercase tracking-widest text-orange-500 flex items-center gap-2">
+                             <Star size={14} /> Programas de Fidelidad
+                          </h3>
+                          <span className="text-[8px] font-black uppercase bg-orange-500/10 text-orange-500 px-2 py-1 rounded-md">Activos</span>
+                       </div>
+                       <div className="p-6 space-y-6">
+                          {customerPromotions.map(cp => {
+                             const promo = promotions.find(p => p.id === cp.promotionId);
+                             if (!promo) return null;
+                             
+                             const progress = (cp.currentCount / promo.requiredQuantity) * 100;
+                             
+                             return (
+                                <div key={cp.id} className="space-y-3">
+                                   <div className="flex justify-between items-start">
+                                      <div>
+                                         <h4 className="text-xs font-black text-white uppercase">{promo.name}</h4>
+                                         <p className="text-[9px] text-slate-500 font-bold uppercase">{promo.description}</p>
+                                      </div>
+                                      <div className="text-right">
+                                         <p className="text-[10px] font-black text-orange-500">{cp.currentCount} / {promo.requiredQuantity}</p>
+                                         <p className="text-[8px] text-slate-500 font-bold uppercase">Compras</p>
+                                      </div>
+                                   </div>
+                                   
+                                   {/* Barra de Progreso */}
+                                   <div className="h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-700">
+                                      <div 
+                                         className="h-full bg-orange-500 transition-all duration-500" 
+                                         style={{ width: `${Math.min(progress, 100)}%` }}
+                                      />
+                                   </div>
+                                   
+                                   <div className="flex justify-between items-center">
+                                      <div className="flex items-center gap-2">
+                                         <div className={`p-1.5 rounded-lg ${cp.totalRedeemed > 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-800 text-slate-500'}`}>
+                                            <Gift size={12} />
+                                         </div>
+                                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-tight">
+                                            Premios Obtenidos: <span className={cp.totalRedeemed > 0 ? 'text-emerald-500' : ''}>{cp.totalRedeemed}</span>
+                                         </span>
+                                      </div>
+                                      <p className="text-[8px] text-slate-500 font-bold uppercase">
+                                         Última Actividad: {new Date(cp.lastUpdate).toLocaleDateString()}
+                                      </p>
+                                   </div>
+                                </div>
+                             );
+                          })}
+                       </div>
+                    </div>
+                 )}
 
                  {/* Tabla de Movimientos */}
                  <div className="bg-[#1e293b] rounded-[2rem] border border-slate-700 overflow-hidden shadow-xl">

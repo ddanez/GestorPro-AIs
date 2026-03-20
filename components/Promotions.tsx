@@ -2,10 +2,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Tag, Plus, Search, Trash2, UserCheck, Gift, ChevronRight, 
-  CheckCircle2, Clock, AlertCircle, UserPlus, Package, Phone
+  CheckCircle2, Clock, AlertCircle, UserPlus, Package, Phone, X
 } from 'lucide-react';
 import { AppSettings, Customer, Product, Promotion, CustomerPromotion } from '../types';
 import { dbService } from '../db';
+import { CelebrationModal } from './CelebrationModal';
 
 interface PromotionsProps {
   settings: AppSettings;
@@ -23,6 +24,10 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products, 
   const [selectedPromo, setSelectedPromo] = useState<Promotion | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Estados para celebración
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationData, setCelebrationData] = useState({ customerName: '', promotionName: '' });
 
   const [newPromo, setNewPromo] = useState<Partial<Promotion>>({
     name: '',
@@ -151,12 +156,24 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products, 
 
       // 2. Actualizar contador de promoción
       let updated: CustomerPromotion;
+      const customer = customers.find(c => c.id === customerId);
+      
       if (existing) {
+        const oldCount = existing.currentCount;
         updated = {
           ...existing,
           currentCount: existing.currentCount + 1,
           lastUpdate: new Date().toISOString()
         };
+
+        // Verificar si completó la meta
+        if (oldCount < promo.requiredQuantity && updated.currentCount >= promo.requiredQuantity) {
+          setCelebrationData({
+            customerName: customer?.name || 'Cliente',
+            promotionName: promo.name
+          });
+          setShowCelebration(true);
+        }
       } else {
         updated = {
           id: crypto.randomUUID(),
@@ -166,6 +183,15 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products, 
           totalRedeemed: 0,
           lastUpdate: new Date().toISOString()
         };
+
+        // Verificar si completó la meta (si requiredQuantity es 1)
+        if (updated.currentCount >= promo.requiredQuantity) {
+          setCelebrationData({
+            customerName: customer?.name || 'Cliente',
+            promotionName: promo.name
+          });
+          setShowCelebration(true);
+        }
       }
 
       await dbService.put('customer_promotions', updated);
@@ -397,6 +423,13 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products, 
           </div>
         ))}
       </div>
+      
+      <CelebrationModal 
+        isOpen={showCelebration} 
+        onClose={() => setShowCelebration(false)}
+        customerName={celebrationData.customerName}
+        promotionName={celebrationData.promotionName}
+      />
 
       {/* New Promo Modal */}
       {showPromoModal && (
@@ -584,11 +617,3 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products, 
 };
 
 export default Promotions;
-
-function X({ size }: { size: number }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
-    </svg>
-  );
-}
