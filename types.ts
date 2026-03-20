@@ -11,7 +11,8 @@ export enum AppTab {
   CXP = 'cxp',
   EXPENSES = 'expenses',
   REPORTS = 'reports',
-  SETTINGS = 'settings'
+  SETTINGS = 'settings',
+  PROMOTIONS = 'promotions'
 }
 
 export interface CompanyInfo {
@@ -194,6 +195,26 @@ export interface Recipe {
   costPerPortionUSD: number;
   profitPerPortionUSD: number;
   preparation?: string;
+}
+
+export interface Promotion {
+  id: string;
+  name: string;
+  description: string;
+  type: 'docena_13' | 'discount' | 'combo';
+  productId?: string;
+  requiredQuantity: number;
+  rewardQuantity: number;
+  isActive: boolean;
+}
+
+export interface CustomerPromotion {
+  id: string;
+  customerId: string;
+  promotionId: string;
+  currentCount: number;
+  totalRedeemed: number;
+  lastUpdate: string;
 }
 
 export type UserRole = 'admin' | 'seller';

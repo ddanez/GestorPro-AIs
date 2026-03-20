@@ -1,7 +1,7 @@
 // db.ts - Implementación con Backend API y Fallback a IndexedDB
 const DB_NAME = 'GestorProDB';
-const DB_VERSION = 7;
-const STORES = ['products', 'customers', 'suppliers', 'sales', 'purchases', 'settings', 'sellers', 'payments', 'authenticators', 'expenses', 'movements', 'ingredients', 'recipes'];
+const DB_VERSION = 8;
+const STORES = ['products', 'customers', 'suppliers', 'sales', 'purchases', 'settings', 'sellers', 'payments', 'authenticators', 'expenses', 'movements', 'ingredients', 'recipes', 'promotions', 'customer_promotions'];
 
 export class DBService {
   private db: IDBDatabase | null = null;

@@ -29,6 +29,7 @@ import Splash from './components/Splash';
 import ExchangeRateModal from './components/ExchangeRateModal';
 import Auth from './components/Auth';
 import Manufacturing from './components/Manufacturing';
+import Promotions from './components/Promotions';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -170,6 +171,7 @@ const App: React.FC = () => {
     { id: AppTab.CUSTOMERS, label: 'CLIENTES', icon: Users, roles: ['admin', 'seller'] },
     { id: AppTab.SUPPLIERS, label: 'PROVEEDORES', icon: Truck, roles: ['admin'] },
     { id: AppTab.MANUFACTURING, label: 'MANUFACTURA', icon: ChefHat, roles: ['admin'] },
+    { id: AppTab.PROMOTIONS, label: 'PROMOCIONES', icon: Tag, roles: ['admin', 'seller'] },
     { id: AppTab.CXC, label: 'CXC (DEUDAS)', icon: HandCoins, roles: ['admin', 'seller'] },
     { id: AppTab.CXP, label: 'CXP (PAGOS)', icon: Wallet, roles: ['admin'] },
     { id: AppTab.REPORTS, label: 'REPORTES', icon: BarChart3, roles: ['admin'] },
@@ -277,6 +279,7 @@ const App: React.FC = () => {
           {activeTab === AppTab.CUSTOMERS && <Contacts type="customers" items={customers} setItems={setCustomers} relatedData={sales} payments={payments} settings={settings} />}
           {activeTab === AppTab.SUPPLIERS && <Contacts type="suppliers" items={suppliers} setItems={setSuppliers} relatedData={purchases} payments={payments} settings={settings} />}
           { activeTab === AppTab.MANUFACTURING && <Manufacturing settings={settings} /> }
+          { activeTab === AppTab.PROMOTIONS && <Promotions settings={settings} customers={customers} products={products} /> }
           {activeTab === AppTab.CXC && <Accounts type="cxc" items={sales.filter(s => s.status === 'pending')} settings={settings} company={company} onUpdate={loadData} customers={customers} suppliers={suppliers} />}
           {activeTab === AppTab.CXP && <Accounts type="cxp" items={purchases.filter(p => p.status === 'pending')} settings={settings} company={company} onUpdate={loadData} customers={customers} suppliers={suppliers} />}
           {activeTab === AppTab.REPORTS && <Reports sales={sales} purchases={purchases} expenses={expenses} products={products} customers={customers} suppliers={suppliers} settings={settings} movements={movements} />}
