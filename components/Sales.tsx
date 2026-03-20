@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Plus, Search, Tag, UserPlus, ShoppingCart, Trash2, X, CheckCircle2, MessageCircle, UserPlus2, PackageSearch, CreditCard, Loader2, Edit2, AlertTriangle, Filter, Calendar, User as UserIcon, History, Wallet } from 'lucide-react';
-import { Sale, Customer, Product, AppSettings, SaleItem, CompanyInfo, Seller } from '../types';
+import { Sale, Customer, Product, AppSettings, SaleItem, CompanyInfo, Seller, Promotion, CustomerPromotion } from '../types';
 import { dbService } from '../db';
 import { parseNumber, searchMatch, calculateBS } from '../utils';
 import { TicketModal } from './TicketModal';
@@ -229,6 +229,53 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
       }
 
       await dbService.put('sales', newSale);
+
+      // LOGICA DE PROMOCIONES
+      if (newSale.type === 'venta' && selectedCustomerId) {
+        try {
+          const activePromos = await dbService.getAll<Promotion>('promotions');
+          const customerPromos = await dbService.getAll<CustomerPromotion>('customer_promotions');
+          
+          // 1. Revertir cantidades de la venta anterior si estamos editando
+          if (editingSale && editingSale.type === 'venta' && editingSale.customerId === selectedCustomerId) {
+            for (const item of editingSale.items) {
+              const promo = activePromos.find(p => p.productId === item.productId || !p.productId);
+              if (promo) {
+                const cp = customerPromos.find(x => x.customerId === selectedCustomerId && x.promotionId === promo.id);
+                if (cp) {
+                  cp.currentCount = Math.max(0, cp.currentCount - (item.quantity || 0));
+                }
+              }
+            }
+          }
+
+          // 2. Aplicar cantidades de la nueva venta
+          for (const item of cart) {
+            const promo = activePromos.find(p => p.isActive && (p.productId === item.productId || !p.productId));
+            if (promo) {
+              let cp = customerPromos.find(x => x.customerId === selectedCustomerId && x.promotionId === promo.id);
+              if (cp) {
+                cp.currentCount += (item.quantity || 0);
+                cp.lastUpdate = new Date().toISOString();
+              } else {
+                cp = {
+                  id: crypto.randomUUID(),
+                  customerId: selectedCustomerId,
+                  promotionId: promo.id,
+                  currentCount: item.quantity || 0,
+                  totalRedeemed: 0,
+                  lastUpdate: new Date().toISOString()
+                };
+                customerPromos.push(cp);
+              }
+              await dbService.put('customer_promotions', cp);
+            }
+          }
+        } catch (promoErr) {
+          console.error("Error al procesar promociones:", promoErr);
+          // No bloqueamos la venta por un error en promociones
+        }
+      }
 
       // Registrar o actualizar el pago
       if (newSale.paidAmountUSD && newSale.paidAmountUSD > 0) {
