@@ -24,7 +24,12 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'grouped' | 'chronological'>('grouped');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const chronologicalItems = useMemo(() => {
+    return [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [items]);
 
   const grouped = useMemo(() => {
     const acc: Record<string, { id: string, name: string, totalPending: number, invoices: (Sale | Purchase)[], creditBalance: number }> = {};
@@ -255,92 +260,157 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
         </div>
       </div>
 
+      <div className="flex bg-[#1e293b] p-1 rounded-xl border border-slate-700">
+        <button 
+          onClick={() => setViewMode('grouped')}
+          className={`flex-1 py-2 text-[8px] font-black uppercase tracking-widest rounded-lg transition-all ${viewMode === 'grouped' ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          Por Cliente
+        </button>
+        <button 
+          onClick={() => setViewMode('chronological')}
+          className={`flex-1 py-2 text-[8px] font-black uppercase tracking-widest rounded-lg transition-all ${viewMode === 'chronological' ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          Cronológico
+        </button>
+      </div>
+
       <div className="space-y-3">
-        {grouped.map(group => {
-          const isExpanded = expandedId === group.id;
-          return (
-            <div key={group.id} className="bg-[#1e293b] rounded-2xl border border-slate-700 overflow-hidden transition-all">
-              <div 
-                className="p-4 flex justify-between items-center gap-4 cursor-pointer hover:bg-slate-800/50"
-                onClick={() => setExpandedId(isExpanded ? null : group.id)}
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="w-10 h-10 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center shrink-0">
-                    {type === 'cxc' ? <User size={18} /> : <Truck size={18} />}
-                  </div>
-                  <div className="truncate">
-                    <p className="font-black text-xs text-white leading-tight uppercase truncate">{group.name}</p>
-                    <div className="flex flex-col mt-0.5">
-                      {group.totalPending > 0 && (
-                        <div className="flex gap-2">
-                          <p className="text-[8px] text-rose-500 font-black uppercase">Deuda: ${group.totalPending.toFixed(2)}</p>
-                          <p className="text-[8px] text-slate-400 font-black uppercase">({calculateBS(group.totalPending, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.)</p>
-                        </div>
-                      )}
-                      {group.creditBalance > 0 && (
-                        <div className="flex gap-2">
-                          <p className="text-[8px] text-emerald-500 font-black uppercase">Crédito: ${group.creditBalance.toFixed(2)}</p>
-                          <p className="text-[8px] text-slate-400 font-black uppercase">({calculateBS(group.creditBalance, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.)</p>
-                        </div>
-                      )}
+        {viewMode === 'grouped' ? (
+          grouped.map(group => {
+            const isExpanded = expandedId === group.id;
+            return (
+              <div key={group.id} className="bg-[#1e293b] rounded-2xl border border-slate-700 overflow-hidden transition-all">
+                <div 
+                  className="p-4 flex justify-between items-center gap-4 cursor-pointer hover:bg-slate-800/50"
+                  onClick={() => setExpandedId(isExpanded ? null : group.id)}
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-10 h-10 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center shrink-0">
+                      {type === 'cxc' ? <User size={18} /> : <Truck size={18} />}
+                    </div>
+                    <div className="truncate">
+                      <p className="font-black text-xs text-white leading-tight uppercase truncate">{group.name}</p>
+                      <div className="flex flex-col mt-0.5">
+                        {group.totalPending > 0 && (
+                          <div className="flex gap-2">
+                            <p className="text-[8px] text-rose-500 font-black uppercase">Deuda: ${group.totalPending.toFixed(2)}</p>
+                            <p className="text-[8px] text-slate-400 font-black uppercase">({calculateBS(group.totalPending, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.)</p>
+                          </div>
+                        )}
+                        {group.creditBalance > 0 && (
+                          <div className="flex gap-2">
+                            <p className="text-[8px] text-emerald-500 font-black uppercase">Crédito: ${group.creditBalance.toFixed(2)}</p>
+                            <p className="text-[8px] text-slate-400 font-black uppercase">({calculateBS(group.creditBalance, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.)</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation();
+                        setPaymentModal({ entityId: group.id, name: group.name, balance: group.totalPending }); 
+                        setAmountToPay(group.totalPending); 
+                      }}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl font-black text-[8px] uppercase tracking-widest transition-all shadow-md"
+                    >
+                      ABONAR
+                    </button>
+                    {isExpanded ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
+
+                {isExpanded && (
+                  <div className="px-4 pb-4 space-y-2 border-t border-slate-700/50 pt-3 bg-slate-900/30">
+                    <div className="flex justify-between items-center mb-2 px-1">
+                      <p className="text-[8px] font-black text-slate-500 uppercase">Detalle de Transacciones</p>
+                      <button 
+                        onClick={() => { 
+                          setPaymentModal({ entityId: group.id, name: group.name, balance: group.totalPending }); 
+                          setAmountToPay(group.totalPending); 
+                        }}
+                        className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-500 px-3 py-1.5 rounded-lg font-black text-[7px] uppercase tracking-widest hover:bg-emerald-500/20 transition-all"
+                      >
+                        <Wallet size={10} />
+                        Agregar Pago
+                      </button>
+                    </div>
+                    {group.invoices.length === 0 && (
+                      <p className="text-[8px] text-slate-500 uppercase font-black text-center py-2">No hay facturas pendientes</p>
+                    )}
+                    {group.invoices.map(inv => {
+                      const invBalance = (inv.totalUSD || 0) - (inv.paidAmountUSD || 0);
+                      return (
+                        <div key={inv.id} className="flex justify-between items-center p-3 bg-slate-800/40 rounded-xl border border-slate-700/50">
+                          <div className="flex items-center gap-3">
+                            <Calendar size={12} className="text-slate-500" />
+                            <div>
+                              <p className="text-[9px] font-black text-white uppercase">Factura #{inv.id.slice(-6)}</p>
+                              <p className="text-[7px] text-slate-500 font-bold uppercase">{new Date(inv.date).toLocaleDateString()}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <p className="text-[9px] font-black text-rose-500">${invBalance.toFixed(2)}</p>
+                              <p className="text-[7px] text-slate-400 font-black uppercase">{calculateBS(invBalance, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.</p>
+                              <p className="text-[7px] text-slate-500 font-bold uppercase">Original: ${inv.totalUSD.toFixed(2)}</p>
+                            </div>
+                            <button 
+                              onClick={() => { 
+                                setPaymentModal({ entityId: group.id, name: group.name, invoiceId: inv.id, balance: invBalance }); 
+                                setAmountToPay(invBalance); 
+                              }}
+                              className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-all"
+                            >
+                              <ArrowRight size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        ) : (
+          chronologicalItems.map(inv => {
+            const invBalance = (inv.totalUSD || 0) - (inv.paidAmountUSD || 0);
+            const entityId = type === 'cxc' ? (inv as Sale).customerId : (inv as Purchase).supplierId;
+            const entityName = type === 'cxc' ? (inv as Sale).customerName : (inv as Purchase).supplierName;
+            
+            return (
+              <div key={inv.id} className="bg-[#1e293b] p-4 rounded-2xl border border-slate-700 flex justify-between items-center gap-4">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="w-10 h-10 bg-slate-800 text-slate-400 rounded-xl flex items-center justify-center shrink-0">
+                    <Calendar size={18} />
+                  </div>
+                  <div className="truncate">
+                    <p className="font-black text-xs text-white leading-tight uppercase truncate">{entityName}</p>
+                    <p className="text-[8px] text-slate-500 font-black uppercase mt-0.5">Factura #{inv.id.slice(-6)} • {new Date(inv.date).toLocaleDateString()}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-[9px] font-black text-rose-500">${invBalance.toFixed(2)}</p>
+                    <p className="text-[7px] text-slate-400 font-black uppercase">{calculateBS(invBalance, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.</p>
+                  </div>
                   <button 
-                    onClick={(e) => { 
-                      e.stopPropagation();
-                      setPaymentModal({ entityId: group.id, name: group.name, balance: group.totalPending }); 
-                      setAmountToPay(group.totalPending); 
+                    onClick={() => { 
+                      setPaymentModal({ entityId, name: entityName, invoiceId: inv.id, balance: invBalance }); 
+                      setAmountToPay(invBalance); 
                     }}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl font-black text-[8px] uppercase tracking-widest transition-all shadow-md"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-xl transition-all shadow-md"
                   >
-                    ABONAR
+                    <ArrowRight size={14} />
                   </button>
-                  {isExpanded ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
                 </div>
               </div>
-
-              {isExpanded && (
-                <div className="px-4 pb-4 space-y-2 border-t border-slate-700/50 pt-3 bg-slate-900/30">
-                  {group.invoices.length === 0 && (
-                    <p className="text-[8px] text-slate-500 uppercase font-black text-center py-2">No hay facturas pendientes</p>
-                  )}
-                  {group.invoices.map(inv => {
-                    const invBalance = (inv.totalUSD || 0) - (inv.paidAmountUSD || 0);
-                    return (
-                      <div key={inv.id} className="flex justify-between items-center p-3 bg-slate-800/40 rounded-xl border border-slate-700/50">
-                        <div className="flex items-center gap-3">
-                          <Calendar size={12} className="text-slate-500" />
-                          <div>
-                            <p className="text-[9px] font-black text-white uppercase">Factura #{inv.id.slice(-6)}</p>
-                            <p className="text-[7px] text-slate-500 font-bold uppercase">{new Date(inv.date).toLocaleDateString()}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <p className="text-[9px] font-black text-rose-500">${invBalance.toFixed(2)}</p>
-                            <p className="text-[7px] text-slate-400 font-black uppercase">{calculateBS(invBalance, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.</p>
-                            <p className="text-[7px] text-slate-500 font-bold uppercase">Original: ${inv.totalUSD.toFixed(2)}</p>
-                          </div>
-                          <button 
-                            onClick={() => { 
-                              setPaymentModal({ entityId: group.id, name: group.name, invoiceId: inv.id, balance: invBalance }); 
-                              setAmountToPay(invBalance); 
-                            }}
-                            className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-all"
-                          >
-                            <ArrowRight size={12} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       {paymentModal && (
