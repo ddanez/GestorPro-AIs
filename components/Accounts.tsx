@@ -1,10 +1,11 @@
 
-import React, { useState, useMemo } from 'react';
-import { CheckCircle2, DollarSign, Calendar, User, Truck, MessageCircle, Wallet, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
+import React, { useState, useMemo, useRef } from 'react';
+import { CheckCircle2, DollarSign, Calendar, User, Truck, MessageCircle, Wallet, ChevronDown, ChevronUp, ArrowRight, FileUp, Loader2, AlertCircle } from 'lucide-react';
 import { AppSettings, Sale, Purchase, CompanyInfo, Customer, Supplier } from '../types';
 import { dbService } from '../db';
 import { parseNumber, calculateBS } from '../utils';
 import { TicketModal } from './TicketModal';
+import { PDFImportService, ExtractedDebt } from '../services/pdfImportService';
 
 interface Props {
   type: 'cxc' | 'cxp';
@@ -21,6 +22,9 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
   const [paymentModal, setPaymentModal] = useState<{ entityId: string, name: string, invoiceId?: string, balance: number } | null>(null);
   const [amountToPay, setAmountToPay] = useState<number>(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const grouped = useMemo(() => {
     const acc: Record<string, { id: string, name: string, totalPending: number, invoices: (Sale | Purchase)[], creditBalance: number }> = {};
@@ -138,11 +142,106 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
     onUpdate();
   };
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    setImportError(null);
+
+    try {
+      const apiKey = settings.geminiApiKey || (process.env.GEMINI_API_KEY as string);
+      if (!apiKey) {
+        throw new Error("No se encontró la API Key de Gemini. Por favor, configúrela en Ajustes.");
+      }
+
+      const base64 = await PDFImportService.fileToBase64(file);
+      const service = new PDFImportService(apiKey);
+      const extractedDebts = await service.extractDebtsFromPDF(base64);
+
+      if (extractedDebts.length === 0) {
+        throw new Error("No se pudieron extraer deudas del PDF. Verifique el formato del archivo.");
+      }
+
+      for (const debt of extractedDebts) {
+        // 1. Find or create customer
+        let customer = customers.find(c => c.name.toLowerCase() === debt.customerName.toLowerCase());
+        if (!customer) {
+          customer = {
+            id: crypto.randomUUID(),
+            name: debt.customerName,
+            rif: 'N/A',
+            phone: 'N/A',
+            email: 'N/A',
+            creditBalanceUSD: 0
+          };
+          await dbService.put('customers', customer);
+        }
+
+        // 2. Create pending sale
+        const sale: Sale = {
+          id: crypto.randomUUID(),
+          date: debt.date || new Date().toISOString(),
+          customerId: customer.id,
+          customerName: customer.name,
+          items: [{ productId: 'import', name: debt.description || 'Deuda Importada', quantity: 1, priceUSD: debt.amountUSD }],
+          totalUSD: debt.amountUSD,
+          totalBS: debt.amountUSD * settings.exchangeRate,
+          exchangeRate: settings.exchangeRate,
+          status: 'pending',
+          paidAmountUSD: 0
+        };
+        await dbService.put('sales', sale);
+      }
+
+      onUpdate();
+      alert(`Se importaron ${extractedDebts.length} deudas correctamente.`);
+    } catch (err: any) {
+      console.error("Error al importar PDF:", err);
+      setImportError(err.message || "Error desconocido al procesar el PDF.");
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const totalPending = grouped.reduce((sum, g) => sum + g.totalPending, 0);
   const totalCredit = grouped.reduce((sum, g) => sum + g.creditBalance, 0);
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
+      {type === 'cxc' && (
+        <div className="bg-[#1e293b] p-4 rounded-2xl border border-slate-700 shadow-lg flex flex-col gap-3">
+          <div className="flex justify-between items-center">
+            <div>
+              <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Importar Cuentas</h4>
+              <p className="text-[8px] text-slate-500 font-bold uppercase">Sube un PDF de tu sistema anterior</p>
+            </div>
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isImporting}
+              className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-lg disabled:opacity-50"
+            >
+              {isImporting ? <Loader2 size={14} className="animate-spin" /> : <FileUp size={14} />}
+              {isImporting ? 'Procesando...' : 'Subir PDF'}
+            </button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileChange} 
+              accept="application/pdf" 
+              className="hidden" 
+            />
+          </div>
+          {importError && (
+            <div className="flex items-center gap-2 bg-rose-500/10 border border-rose-500/20 p-2 rounded-lg text-rose-500 text-[8px] font-black uppercase">
+              <AlertCircle size={12} />
+              <span>{importError}</span>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-[#1e293b] p-4 rounded-2xl border border-slate-700 shadow-lg">
           <p className="text-[8px] font-black text-rose-500 uppercase tracking-widest leading-none mb-1">Total Pendiente</p>
