@@ -40,7 +40,7 @@ const App: React.FC = () => {
   const [showPermissionNudge, setShowPermissionNudge] = useState(false);
 
   const [company, setCompany] = useState<CompanyInfo>({
-    name: "D'Danez Gestor Business",
+    name: "D'DANEZ DISTRIBUCIONES",
     rif: "J-00000000-0",
     address: "Calle Principal",
     phone: "0412-0000000"

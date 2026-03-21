@@ -1,15 +1,15 @@
 
 {
-  "name": "D'Danez Gestor Business",
-  "short_name": "GestorPro",
+  "name": "D'DANEZ DISTRIBUCIONES",
+  "short_name": "D'Danez",
   "description": "Sistema integral de gestión de ventas e inventario local",
   "start_url": "/",
-  "display": "fullscreen",
+  "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#f97316",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/1162/1162456.png",
+      "src": "https://cdn-icons-png.flaticon.com/512/1162/1162499.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
