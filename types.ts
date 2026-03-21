@@ -207,6 +207,7 @@ export interface Promotion {
   requiredQuantity: number;
   rewardQuantity: number;
   isActive: boolean;
+  excludedPromotionIds?: string[];
 }
 
 export interface CustomerPromotion {

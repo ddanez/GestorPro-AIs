@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Tag, Plus, Search, Trash2, UserCheck, Gift, ChevronRight, 
-  CheckCircle2, Clock, AlertCircle, UserPlus, Package, Phone, X
+  CheckCircle2, Clock, AlertCircle, UserPlus, Package, Phone, X, Edit2
 } from 'lucide-react';
 import { AppSettings, Customer, Product, Promotion, CustomerPromotion } from '../types';
 import { dbService } from '../db';
@@ -36,7 +36,8 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products, 
     enrollmentType: 'manual',
     requiredQuantity: 12,
     rewardQuantity: 1,
-    isActive: true
+    isActive: true,
+    excludedPromotionIds: []
   });
 
   const loadData = useCallback(async () => {
@@ -77,7 +78,8 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products, 
         productId: newPromo.productId,
         requiredQuantity: Number(newPromo.requiredQuantity) || 12,
         rewardQuantity: Number(newPromo.rewardQuantity) || 1,
-        isActive: newPromo.isActive ?? true
+        isActive: newPromo.isActive ?? true,
+        excludedPromotionIds: newPromo.excludedPromotionIds || []
       };
 
       await dbService.put('promotions', promo);
@@ -89,7 +91,8 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products, 
         enrollmentType: 'manual',
         requiredQuantity: 12,
         rewardQuantity: 1,
-        isActive: true
+        isActive: true,
+        excludedPromotionIds: []
       });
       loadData();
     } catch (err) {
@@ -126,6 +129,18 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products, 
       const promo = promotions.find(p => p.id === promoId);
       
       if (!promo) return;
+
+      // 0. Verificar excepciones (si el cliente ya está en una promoción excluida)
+      if (promo.excludedPromotionIds && promo.excludedPromotionIds.length > 0) {
+        const activePromosForCustomer = customerPromotions.filter(cp => cp.customerId === customerId && cp.currentCount > 0);
+        const hasConflict = activePromosForCustomer.some(cp => promo.excludedPromotionIds?.includes(cp.promotionId));
+        
+        if (hasConflict) {
+          const conflictingPromo = promotions.find(p => activePromosForCustomer.some(cp => cp.promotionId === p.id && promo.excludedPromotionIds?.includes(p.id)));
+          alert(`EL CLIENTE YA TIENE UNA PROMOCIÓN ACTIVA INCOMPATIBLE: ${conflictingPromo?.name || 'OTRA PROMO'}`);
+          return;
+        }
+      }
 
       // 1. Descontar stock si hay un producto vinculado
       if (promo.productId) {
@@ -329,6 +344,15 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products, 
               </div>
               <div className="flex gap-2">
                 <button 
+                  onClick={() => {
+                    setNewPromo(promo);
+                    setShowPromoModal(true);
+                  }}
+                  className="p-3 text-slate-500 hover:text-orange-500 transition-colors"
+                >
+                  <Edit2 size={20} />
+                </button>
+                <button 
                   onClick={() => handleDeletePromo(promo.id)}
                   className="p-3 text-slate-500 hover:text-rose-500 transition-colors"
                 >
@@ -434,14 +458,26 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products, 
       {/* New Promo Modal */}
       {showPromoModal && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-[#1e293b] w-full max-w-md rounded-[2.5rem] border border-slate-700 shadow-2xl animate-in zoom-in-95 overflow-hidden">
-            <div className="p-8 border-b border-slate-700 flex justify-between items-center">
-              <h3 className="text-xl font-black uppercase tracking-tighter">Nueva Campaña</h3>
-              <button onClick={() => setShowPromoModal(false)} className="text-slate-500 hover:text-white">
+          <div className="bg-[#1e293b] w-full max-w-md rounded-[2.5rem] border border-slate-700 shadow-2xl animate-in zoom-in-95 overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="p-8 border-b border-slate-700 flex justify-between items-center shrink-0">
+              <h3 className="text-xl font-black uppercase tracking-tighter">{newPromo.id ? 'Editar Campaña' : 'Nueva Campaña'}</h3>
+              <button onClick={() => {
+                setShowPromoModal(false);
+                setNewPromo({
+                  name: '',
+                  description: '',
+                  type: 'docena_13',
+                  enrollmentType: 'manual',
+                  requiredQuantity: 12,
+                  rewardQuantity: 1,
+                  isActive: true,
+                  excludedPromotionIds: []
+                });
+              }} className="text-slate-500 hover:text-white">
                 <X size={24} />
               </button>
             </div>
-            <div className="p-8 space-y-6">
+            <div className="p-8 space-y-6 overflow-y-auto custom-scrollbar">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nombre de la Campaña</label>
                 <input 
@@ -511,11 +547,39 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products, 
                   ))}
                 </select>
               </div>
+
+              {/* Excepciones (Exclusiones) */}
+              <div className="space-y-3 pt-4 border-t border-slate-700">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Excepciones (Incompatible con:)</label>
+                <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                  {promotions.filter(p => p.id !== newPromo.id).length === 0 ? (
+                    <p className="text-[10px] font-bold text-slate-600 uppercase italic">No hay otras promociones para excluir</p>
+                  ) : promotions.filter(p => p.id !== newPromo.id).map(p => (
+                    <label key={p.id} className="flex items-center gap-3 p-3 bg-[#0f172a] rounded-xl border border-slate-700 cursor-pointer hover:border-orange-500/50 transition-all">
+                      <input 
+                        type="checkbox"
+                        className="w-4 h-4 accent-orange-500"
+                        checked={newPromo.excludedPromotionIds?.includes(p.id)}
+                        onChange={(e) => {
+                          const current = newPromo.excludedPromotionIds || [];
+                          if (e.target.checked) {
+                            setNewPromo({...newPromo, excludedPromotionIds: [...current, p.id]});
+                          } else {
+                            setNewPromo({...newPromo, excludedPromotionIds: current.filter(id => id !== p.id)});
+                          }
+                        }}
+                      />
+                      <span className="text-[10px] font-black text-white uppercase">{p.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               <button 
                 onClick={handleSavePromo}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-5 rounded-2xl transition-all shadow-xl shadow-orange-500/20 uppercase text-[10px] tracking-[0.2em]"
+                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-5 rounded-2xl transition-all shadow-xl shadow-orange-500/20 uppercase text-[10px] tracking-[0.2em] shrink-0"
               >
-                CREAR CAMPAÑA
+                {newPromo.id ? 'GUARDAR CAMBIOS' : 'CREAR CAMPAÑA'}
               </button>
             </div>
           </div>
