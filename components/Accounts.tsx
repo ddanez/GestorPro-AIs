@@ -38,12 +38,15 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
       const entityId = type === 'cxc' ? (item as Sale).customerId : (item as Purchase).supplierId;
       const entityName = type === 'cxc' ? (item as Sale).customerName : (item as Purchase).supplierName;
       
-      if (!acc[entityId]) {
+      // Agrupar por nombre normalizado para evitar duplicados visuales
+      const groupKey = entityName.toLowerCase().trim();
+      
+      if (!acc[groupKey]) {
         const entity = type === 'cxc' 
-          ? customers.find(c => c.id === entityId) 
-          : suppliers.find(s => s.id === entityId);
+          ? customers.find(c => c.id === entityId || c.name.toLowerCase().trim() === groupKey) 
+          : suppliers.find(s => s.id === entityId || s.name.toLowerCase().trim() === groupKey);
           
-        acc[entityId] = {
+        acc[groupKey] = {
           id: entityId,
           name: entityName,
           totalPending: 0,
@@ -53,15 +56,16 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
       }
       
       const balance = (item.totalUSD || 0) - (item.paidAmountUSD || 0);
-      acc[entityId].totalPending += balance;
-      acc[entityId].invoices.push(item);
+      acc[groupKey].totalPending += balance;
+      acc[groupKey].invoices.push(item);
     });
     
     // Add entities with credit balance even if no pending invoices
     const allEntities = type === 'cxc' ? customers : suppliers;
     allEntities.forEach(entity => {
-      if ((entity.creditBalanceUSD || 0) > 0 && !acc[entity.id]) {
-        acc[entity.id] = {
+      const groupKey = entity.name.toLowerCase().trim();
+      if ((entity.creditBalanceUSD || 0) > 0 && !acc[groupKey]) {
+        acc[groupKey] = {
           id: entity.id,
           name: entity.name,
           totalPending: 0,
@@ -80,7 +84,7 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
     const { entityId, invoiceId } = paymentModal;
     let remaining = amountToPay;
     
-    const entityGroup = grouped.find(g => g.id === entityId);
+    const entityGroup = grouped.find(g => g.id === entityId || g.name === paymentModal.name);
     if (!entityGroup) return;
 
     const invoicesToUpdate = invoiceId 
@@ -108,8 +112,8 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
     // Surplus goes to credit balance
     if (remaining > 0) {
       const entity = type === 'cxc' 
-        ? customers.find(c => c.id === entityId) 
-        : suppliers.find(s => s.id === entityId);
+        ? customers.find(c => c.id === entityId || c.name === paymentModal.name) 
+        : suppliers.find(s => s.id === entityId || s.name === paymentModal.name);
         
       if (entity) {
         const updatedEntity = {
@@ -168,22 +172,29 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
         throw new Error("No se pudieron extraer deudas del PDF. Verifique el formato del archivo.");
       }
 
+      // Mantener una lista local de clientes para evitar duplicados durante el bucle
+      const currentCustomers = [...customers];
+
       for (const debt of extractedDebts) {
-        // 1. Find or create customer
-        let customer = customers.find(c => c.name.toLowerCase() === debt.customerName.toLowerCase());
+        const normalizedName = debt.customerName.toLowerCase().trim();
+        
+        // 1. Buscar en la lista actualizada
+        let customer = currentCustomers.find(c => c.name.toLowerCase().trim() === normalizedName);
+        
         if (!customer) {
           customer = {
             id: crypto.randomUUID(),
-            name: debt.customerName,
+            name: debt.customerName.trim(),
             rif: 'N/A',
             phone: 'N/A',
             email: 'N/A',
             creditBalanceUSD: 0
           };
           await dbService.put('customers', customer);
+          currentCustomers.push(customer); // Añadir a la lista local para la siguiente iteración
         }
 
-        // 2. Create pending sale
+        // 2. Crear venta pendiente
         const sale: Sale = {
           id: crypto.randomUUID(),
           date: debt.date || new Date().toISOString(),
