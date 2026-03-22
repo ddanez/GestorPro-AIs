@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useRef } from 'react';
-import { CheckCircle2, DollarSign, Calendar, User, Truck, MessageCircle, Wallet, ChevronDown, ChevronUp, ArrowRight, FileUp, Loader2, AlertCircle } from 'lucide-react';
+import { CheckCircle2, DollarSign, Calendar, User, Truck, MessageCircle, Wallet, ChevronDown, ChevronUp, ArrowRight, FileUp, Loader2, AlertCircle, Search } from 'lucide-react';
 import { AppSettings, Sale, Purchase, CompanyInfo, Customer, Supplier } from '../types';
 import { dbService } from '../db';
 import { parseNumber, calculateBS } from '../utils';
@@ -25,11 +25,20 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grouped' | 'chronological'>('grouped');
+  const [searchTerm, setSearchTerm] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const chronologicalItems = useMemo(() => {
-    return [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [items]);
+    let filtered = [...items];
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter(item => {
+        const name = type === 'cxc' ? (item as Sale).customerName : (item as Purchase).supplierName;
+        return name.toLowerCase().includes(term);
+      });
+    }
+    return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [items, searchTerm, type]);
 
   const grouped = useMemo(() => {
     const acc: Record<string, { id: string, name: string, totalPending: number, invoices: (Sale | Purchase)[], creditBalance: number }> = {};
@@ -38,6 +47,11 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
       const entityId = type === 'cxc' ? (item as Sale).customerId : (item as Purchase).supplierId;
       const entityName = type === 'cxc' ? (item as Sale).customerName : (item as Purchase).supplierName;
       
+      // Filter by search term if present
+      if (searchTerm && !entityName.toLowerCase().includes(searchTerm.toLowerCase().trim())) {
+        return;
+      }
+
       // Agrupar por nombre normalizado para evitar duplicados visuales
       const groupKey = entityName.toLowerCase().trim();
       
@@ -64,6 +78,12 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
     const allEntities = type === 'cxc' ? customers : suppliers;
     allEntities.forEach(entity => {
       const groupKey = entity.name.toLowerCase().trim();
+      
+      // Filter by search term if present
+      if (searchTerm && !entity.name.toLowerCase().includes(searchTerm.toLowerCase().trim())) {
+        return;
+      }
+
       if ((entity.creditBalanceUSD || 0) > 0 && !acc[groupKey]) {
         acc[groupKey] = {
           id: entity.id,
@@ -76,7 +96,7 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
     });
 
     return Object.values(acc).sort((a, b) => b.totalPending - a.totalPending);
-  }, [items, type, customers, suppliers]);
+  }, [items, type, customers, suppliers, searchTerm]);
 
   const handleProcessPayment = async () => {
     if (!paymentModal) return;
@@ -269,6 +289,17 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
           <p className="text-xl font-black text-white leading-none">${(totalCredit || 0).toFixed(2)}</p>
           <p className="text-[10px] font-black text-slate-400 mt-1">{calculateBS(totalCredit, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.</p>
         </div>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+        <input 
+          type="text" 
+          placeholder={`BUSCAR ${type === 'cxc' ? 'CLIENTE' : 'PROVEEDOR'}...`}
+          className="w-full bg-[#1e293b] border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-[10px] font-black text-white outline-none focus:border-orange-500 transition-all uppercase tracking-widest"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
 
       <div className="flex bg-[#1e293b] p-1 rounded-xl border border-slate-700">
