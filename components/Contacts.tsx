@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Plus, Search, User, Phone, Trash2, Edit2, X, UserCheck, Mail, Loader2, History, TrendingUp, Wallet, Receipt, ArrowRight, Gift, Star } from 'lucide-react';
+import { Plus, Search, User, Phone, Trash2, Edit2, X, UserCheck, Mail, Loader2, History, TrendingUp, Wallet, Receipt, ArrowRight, Gift, Star, MapPin } from 'lucide-react';
 import { Customer, Supplier, Seller, AppSettings, Sale, Purchase, CompanyInfo, Promotion, CustomerPromotion } from '../types';
 import { dbService } from '../db';
 import { TicketModal } from './TicketModal';
@@ -66,7 +66,10 @@ export const Contacts: React.FC<Props> = ({ type, items, setItems, relatedData, 
         name: formData.get('name') as string,
         rif: formData.get('rif') as string || '',
         phone: formData.get('phone') as string,
-        ...(type === 'customers' ? { email: formData.get('email') as string } : {}),
+        ...(type === 'customers' ? { 
+          email: formData.get('email') as string,
+          address: formData.get('address') as string
+        } : {}),
         ...(type === 'sellers' ? { status: 'active' } : {})
       };
       
@@ -178,6 +181,11 @@ export const Contacts: React.FC<Props> = ({ type, items, setItems, relatedData, 
                    <Mail size={12} className="text-orange-500" /> {item.email}
                 </div>
               )}
+              {item.address && (
+                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
+                   <MapPin size={12} className="text-orange-500" /> {item.address}
+                </div>
+              )}
             </div>
             
             <button 
@@ -216,10 +224,16 @@ export const Contacts: React.FC<Props> = ({ type, items, setItems, relatedData, 
               </div>
 
               {type === 'customers' && (
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Email</label>
-                  <input name="email" type="email" defaultValue={editingItem?.email} className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-orange-500/50" />
-                </div>
+                <>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Email</label>
+                    <input name="email" type="email" defaultValue={editingItem?.email} className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-orange-500/50" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Dirección</label>
+                    <textarea name="address" defaultValue={editingItem?.address} className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-orange-500/50 h-20 resize-none" />
+                  </div>
+                </>
               )}
 
               <div className="flex gap-3 pt-6">
