@@ -73,7 +73,19 @@ export class DBService {
   }
 
   async getAll<T>(storeName: string): Promise<T[]> {
-    // Intentar obtener del backend primero
+    // Obtener datos locales primero como respaldo
+    const localData = await new Promise<T[]>(async (resolve) => {
+      try {
+        const store = await this.getStore(storeName, 'readonly');
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result as T[]);
+        request.onerror = () => resolve([]);
+      } catch (e) {
+        resolve([]);
+      }
+    });
+
+    // Intentar obtener del backend
     if (this.token) {
       try {
         const response = await fetch(`/api/${storeName}`, { headers: this.getHeaders() });
@@ -85,10 +97,29 @@ export class DBService {
           const contentType = response.headers.get("content-type");
           if (contentType && contentType.indexOf("application/json") !== -1) {
             const data = await response.json();
+            
             // Sincronizar localmente
             const store = await this.getStore(storeName, 'readwrite');
-            store.clear();
-            data.forEach((item: any) => store.put(item));
+            
+            if (data && data.length > 0) {
+              // El backend tiene datos, actualizamos lo local
+              store.clear();
+              data.forEach((item: any) => store.put(item));
+              return data;
+            } else if (localData.length > 0) {
+              // El backend está vacío pero tenemos datos locales (posiblemente primera sincronización)
+              console.log(`Sincronizando ${localData.length} registros locales de ${storeName} con el servidor...`);
+              // Subir datos locales al backend de forma asíncrona
+              localData.forEach(item => {
+                fetch(`/api/${storeName}`, {
+                  method: 'POST',
+                  headers: this.getHeaders(),
+                  body: JSON.stringify(item)
+                }).catch(e => console.error(`Error sincronizando ${storeName}:`, e));
+              });
+              return localData;
+            }
+            
             return data;
           }
         }
@@ -97,12 +128,7 @@ export class DBService {
       }
     }
 
-    const store = await this.getStore(storeName);
-    return new Promise((resolve, reject) => {
-      const request = store.getAll();
-      request.onsuccess = () => resolve(request.result as T[]);
-      request.onerror = () => reject(request.error);
-    });
+    return localData;
   }
 
   async put<T>(storeName: string, item: T): Promise<void> {

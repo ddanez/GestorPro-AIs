@@ -102,7 +102,7 @@ const App: React.FC = () => {
     try {
       dbService.setToken(user.token || null);
       await dbService.init();
-      const [p, c, s, sa, pu, st, sel, pay, ex, mov] = await Promise.all([
+      const [p, c, s, sa, pu, st, sel, pay, ex, mov, pro, cpro] = await Promise.all([
         dbService.getAll<Product>('products'),
         dbService.getAll<Customer>('customers'),
         dbService.getAll<Supplier>('suppliers'),
@@ -112,7 +112,9 @@ const App: React.FC = () => {
         dbService.getAll<Seller>('sellers'),
         dbService.getAll<any>('payments'),
         dbService.getAll<any>('expenses'),
-        dbService.getAll<any>('movements')
+        dbService.getAll<any>('movements'),
+        dbService.getAll<any>('promotions'),
+        dbService.getAll<any>('customer_promotions')
       ]);
 
       setProducts(p || []);
