@@ -238,18 +238,21 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
       // LOGICA DE PROMOCIONES
       if (newSale.type === 'venta' && selectedCustomerId) {
         try {
-          const activePromos = await dbService.getAll<Promotion>('promotions');
-          const customerPromos = await dbService.getAll<CustomerPromotion>('customer_promotions');
+          const allPromos = await dbService.getAll<Promotion>('promotions');
+          const activePromos = (allPromos || []).filter(p => p.isActive);
+          const customerPromos = await dbService.getAll<CustomerPromotion>('customer_promotions') || [];
           let completedPromotion: { customerName: string, promotionName: string } | null = null;
           
           // 1. Revertir cantidades de la venta anterior si estamos editando
           if (editingSale && editingSale.type === 'venta' && editingSale.customerId === selectedCustomerId) {
             for (const item of editingSale.items) {
-              const promo = activePromos.find(p => p.productId === item.productId || !p.productId);
-              if (promo) {
+              // Buscar todas las promociones que aplicaban a este item
+              const applicablePromos = activePromos.filter(p => p.productId === item.productId || !p.productId);
+              for (const promo of applicablePromos) {
                 const cp = customerPromos.find(x => x.customerId === selectedCustomerId && x.promotionId === promo.id);
                 if (cp) {
                   cp.currentCount = Math.max(0, cp.currentCount - (item.quantity || 0));
+                  await dbService.put('customer_promotions', cp);
                 }
               }
             }
@@ -257,10 +260,24 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
 
           // 2. Aplicar cantidades de la nueva venta
           for (const item of cart) {
-            const promo = activePromos.find(p => p.isActive && (p.productId === item.productId || !p.productId));
-            if (promo) {
+            // Buscar todas las promociones que aplican a este item
+            const applicablePromos = activePromos.filter(p => p.productId === item.productId || !p.productId);
+            
+            for (const promo of applicablePromos) {
+              const enrollmentType = promo.enrollmentType || 'manual';
               let cp = customerPromos.find(x => x.customerId === selectedCustomerId && x.promotionId === promo.id);
               
+              // Verificar exclusiones (si el cliente ya está en una promoción excluida)
+              if (promo.excludedPromotionIds && promo.excludedPromotionIds.length > 0) {
+                const hasConflict = customerPromos.some(x => 
+                  x.customerId === selectedCustomerId && 
+                  x.currentCount > 0 && 
+                  promo.excludedPromotionIds?.includes(x.promotionId) &&
+                  x.promotionId !== promo.id
+                );
+                if (hasConflict) continue;
+              }
+
               if (cp) {
                 // Si ya existe, actualizamos
                 const oldCount = cp.currentCount;
@@ -275,9 +292,9 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                     promotionName: promo.name
                   };
                 }
-              } else if (promo.enrollmentType === 'all') {
+              } else if (enrollmentType === 'all') {
                 // Si no existe pero la promo es para TODOS, creamos el registro
-                cp = {
+                const newCp: CustomerPromotion = {
                   id: crypto.randomUUID(),
                   customerId: selectedCustomerId,
                   promotionId: promo.id,
@@ -285,10 +302,11 @@ const Sales: React.FC<Props> = ({ sales, setSales, customers, setCustomers, prod
                   totalRedeemed: 0,
                   lastUpdate: new Date().toISOString()
                 };
-                await dbService.put('customer_promotions', cp);
+                await dbService.put('customer_promotions', newCp);
+                customerPromos.push(newCp); // Añadir al array local para siguientes items
 
-                // Verificar si completó la meta al crear (poco probable pero posible si requiredQuantity es pequeño)
-                if (cp.currentCount >= promo.requiredQuantity) {
+                // Verificar si completó la meta al crear
+                if (newCp.currentCount >= promo.requiredQuantity) {
                   completedPromotion = {
                     customerName: customer?.name || 'Cliente',
                     promotionName: promo.name
