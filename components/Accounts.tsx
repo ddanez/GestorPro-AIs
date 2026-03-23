@@ -1,10 +1,11 @@
 
 import React, { useState, useMemo, useRef } from 'react';
-import { CheckCircle2, DollarSign, Calendar, User, Truck, MessageCircle, Wallet, ChevronDown, ChevronUp, ArrowRight, FileUp, Loader2, AlertCircle, Search } from 'lucide-react';
+import { CheckCircle2, DollarSign, Calendar, User, Truck, MessageCircle, Wallet, ChevronDown, ChevronUp, ArrowRight, FileUp, Loader2, AlertCircle, Search, Printer } from 'lucide-react';
 import { AppSettings, Sale, Purchase, CompanyInfo, Customer, Supplier } from '../types';
 import { dbService } from '../db';
 import { parseNumber, calculateBS } from '../utils';
 import { TicketModal } from './TicketModal';
+import { DebtReportModal } from './DebtReportModal';
 import { PDFImportService, ExtractedDebt } from '../services/pdfImportService';
 
 interface Props {
@@ -26,6 +27,7 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
   const [importError, setImportError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grouped' | 'chronological'>('grouped');
   const [searchTerm, setSearchTerm] = useState('');
+  const [printReportData, setPrintReportData] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const chronologicalItems = useMemo(() => {
@@ -351,6 +353,21 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
                   </div>
                   <div className="flex items-center gap-3">
                     <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPrintReportData({
+                          entityName: group.name,
+                          invoices: group.invoices,
+                          totalPending: group.totalPending,
+                          creditBalance: group.creditBalance
+                        });
+                      }}
+                      className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all"
+                      title="Imprimir Deuda Detallada"
+                    >
+                      <Printer size={16} />
+                    </button>
+                    <button 
                       onClick={(e) => { 
                         e.stopPropagation();
                         setPaymentModal({ entityId: group.id, name: group.name, balance: group.totalPending }); 
@@ -503,6 +520,20 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
       )}
 
       <TicketModal isOpen={!!ticketData} onClose={() => setTicketData(null)} data={ticketData} company={company} settings={settings} />
+      
+      {printReportData && (
+        <DebtReportModal 
+          isOpen={!!printReportData}
+          onClose={() => setPrintReportData(null)}
+          entityName={printReportData.entityName}
+          invoices={printReportData.invoices}
+          totalPending={printReportData.totalPending}
+          creditBalance={printReportData.creditBalance}
+          company={company}
+          settings={settings}
+          type={type}
+        />
+      )}
     </div>
   );
 };
