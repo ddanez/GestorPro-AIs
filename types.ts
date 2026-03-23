@@ -78,6 +78,8 @@ export interface Customer {
   email: string;
   address?: string;
   creditBalanceUSD?: number;
+  visitDays?: string[]; // ['L', 'M', 'X', 'J', 'V']
+  visitSequence?: number;
 }
 
 export interface Supplier {

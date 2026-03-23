@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Plus, Search, User, Phone, Trash2, Edit2, X, UserCheck, Mail, Loader2, History, TrendingUp, Wallet, Receipt, ArrowRight, Gift, Star, MapPin } from 'lucide-react';
+import { Plus, Search, User, Phone, Trash2, Edit2, X, UserCheck, Mail, Loader2, History, TrendingUp, Wallet, Receipt, ArrowRight, Gift, Star, MapPin, Calendar, ArrowUpDown, Check } from 'lucide-react';
 import { Customer, Supplier, Seller, AppSettings, Sale, Purchase, CompanyInfo, Promotion, CustomerPromotion } from '../types';
 import { dbService } from '../db';
 import { TicketModal } from './TicketModal';
@@ -28,6 +28,10 @@ export const Contacts: React.FC<Props> = ({ type, items, setItems, relatedData, 
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [customerPromotions, setCustomerPromotions] = useState<CustomerPromotion[]>([]);
+  
+  // Filtros y ordenamiento
+  const [filterDay, setFilterDay] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'sequence'>('name');
 
   // Cargar datos de promociones cuando se abre el historial de un cliente
   useEffect(() => {
@@ -49,12 +53,25 @@ export const Contacts: React.FC<Props> = ({ type, items, setItems, relatedData, 
   }, [historyItem, type]);
 
   const filteredItems = useMemo(() => {
-    return items.filter(i => 
+    let result = items.filter(i => 
       (i.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
       (i.rif || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (i.phone || '').includes(searchTerm)
     );
-  }, [items, searchTerm]);
+
+    if (type === 'customers' && filterDay !== 'all') {
+      result = result.filter(i => i.visitDays?.includes(filterDay));
+    }
+
+    return result.sort((a, b) => {
+      if (sortBy === 'sequence') {
+        const seqA = a.visitSequence || 9999;
+        const seqB = b.visitSequence || 9999;
+        if (seqA !== seqB) return seqA - seqB;
+      }
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  }, [items, searchTerm, filterDay, sortBy, type]);
 
   const saveItem = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -68,7 +85,9 @@ export const Contacts: React.FC<Props> = ({ type, items, setItems, relatedData, 
         phone: formData.get('phone') as string,
         ...(type === 'customers' ? { 
           email: formData.get('email') as string,
-          address: formData.get('address') as string
+          address: formData.get('address') as string,
+          visitDays: formData.getAll('visitDays') as string[],
+          visitSequence: parseInt(formData.get('visitSequence') as string) || 0
         } : {}),
         ...(type === 'sellers' ? { status: 'active' } : {})
       };
@@ -137,18 +156,55 @@ export const Contacts: React.FC<Props> = ({ type, items, setItems, relatedData, 
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
-      <div className="flex gap-3">
-        <div className="relative flex-1 group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-orange-500 transition-colors" size={18} />
-          <input 
-            type="text" placeholder={`Buscar en ${currentLabel.title}...`} 
-            className="w-full bg-[#1e293b] border border-slate-700 rounded-2xl py-3 pl-12 pr-4 text-xs font-bold outline-none transition-all text-white focus:border-orange-500/50"
-            value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      <div className="flex flex-col gap-3">
+        <div className="flex gap-3">
+          <div className="relative flex-1 group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-orange-500 transition-colors" size={18} />
+            <input 
+              type="text" placeholder={`Buscar en ${currentLabel.title}...`} 
+              className="w-full bg-[#1e293b] border border-slate-700 rounded-2xl py-3 pl-12 pr-4 text-xs font-bold outline-none transition-all text-white focus:border-orange-500/50"
+              value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-orange-500 hover:bg-orange-600 text-white font-black p-3 rounded-2xl shadow-lg active:scale-95 transition-all">
+            <Plus size={20} />
+          </button>
         </div>
-        <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-orange-500 hover:bg-orange-600 text-white font-black p-3 rounded-2xl shadow-lg active:scale-95 transition-all">
-          <Plus size={20} />
-        </button>
+
+        {type === 'customers' && (
+          <div className="flex flex-wrap items-center gap-2 bg-[#1e293b] p-2 rounded-2xl border border-slate-700/50">
+            <div className="flex items-center gap-2 px-3 border-r border-slate-700 mr-1">
+              <Calendar size={14} className="text-slate-500" />
+              <span className="text-[9px] font-black text-slate-500 uppercase">Día:</span>
+            </div>
+            <div className="flex gap-1">
+              {['all', 'L', 'M', 'X', 'J', 'V'].map(day => (
+                <button
+                  key={day}
+                  onClick={() => setFilterDay(day)}
+                  className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all ${
+                    filterDay === day 
+                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' 
+                      : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                  }`}
+                >
+                  {day === 'all' ? 'TODOS' : day}
+                </button>
+              ))}
+            </div>
+            <div className="ml-auto flex items-center gap-2 px-3 border-l border-slate-700">
+              <ArrowUpDown size={14} className="text-slate-500" />
+              <select 
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="bg-transparent text-[10px] font-black text-slate-400 uppercase outline-none cursor-pointer hover:text-white transition-colors"
+              >
+                <option value="name" className="bg-[#1e293b]">Nombre</option>
+                <option value="sequence" className="bg-[#1e293b]">Secuencia</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -184,6 +240,28 @@ export const Contacts: React.FC<Props> = ({ type, items, setItems, relatedData, 
               {item.address && (
                 <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
                    <MapPin size={12} className="text-orange-500" /> {item.address}
+                </div>
+              )}
+              {type === 'customers' && (item.visitDays || item.visitSequence) && (
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  {item.visitDays && item.visitDays.length > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      <Calendar size={12} className="text-orange-500" />
+                      <div className="flex gap-0.5">
+                        {['L', 'M', 'X', 'J', 'V'].map(d => (
+                          <span key={d} className={`text-[8px] font-black w-4 h-4 flex items-center justify-center rounded ${item.visitDays.includes(d) ? 'bg-orange-500 text-white' : 'bg-slate-800 text-slate-600'}`}>
+                            {d}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {item.visitSequence !== undefined && (
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-slate-800 rounded-lg border border-slate-700">
+                      <span className="text-[8px] font-black text-slate-500 uppercase">SEQ:</span>
+                      <span className="text-[10px] font-black text-orange-500">{item.visitSequence}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -232,6 +310,39 @@ export const Contacts: React.FC<Props> = ({ type, items, setItems, relatedData, 
                   <div className="space-y-1">
                     <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Dirección</label>
                     <textarea name="address" defaultValue={editingItem?.address} className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-orange-500/50 h-20 resize-none" />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Frecuencia de Visita</label>
+                      <div className="flex gap-1 bg-[#0f172a] p-2 rounded-xl border border-slate-700">
+                        {['L', 'M', 'X', 'J', 'V'].map(day => (
+                          <label key={day} className="flex-1 cursor-pointer group">
+                            <input 
+                              type="checkbox" 
+                              name="visitDays" 
+                              value={day} 
+                              defaultChecked={editingItem?.visitDays?.includes(day)}
+                              className="hidden peer" 
+                            />
+                            <div className="h-10 flex items-center justify-center rounded-lg border border-slate-700 text-[10px] font-black text-slate-500 transition-all peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 group-hover:border-slate-500">
+                              {day}
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Secuencia de Visita</label>
+                      <input 
+                        name="visitSequence" 
+                        type="number" 
+                        step="100"
+                        placeholder="Ej: 100"
+                        defaultValue={editingItem?.visitSequence} 
+                        className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-orange-500/50" 
+                      />
+                    </div>
                   </div>
                 </>
               )}
