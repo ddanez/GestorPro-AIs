@@ -33,6 +33,12 @@ export class DBService {
     if (this.db) return;
 
     return new Promise((resolve, reject) => {
+      // Timeout de seguridad para la inicialización de DB
+      const timeout = setTimeout(() => {
+        console.warn("⚠️ IndexedDB tardando demasiado en responder...");
+        resolve(); // Resolvemos de todos modos para no bloquear la app
+      }, 5000);
+
       const request = indexedDB.open(DB_NAME, DB_VERSION);
 
       request.onupgradeneeded = (event) => {
@@ -45,12 +51,14 @@ export class DBService {
       };
 
       request.onsuccess = (event) => {
+        clearTimeout(timeout);
         this.db = (event.target as IDBOpenDBRequest).result;
         console.log("🗄️ IndexedDB inicializada correctamente");
         resolve();
       };
 
       request.onerror = () => {
+        clearTimeout(timeout);
         console.error("❌ Error al abrir IndexedDB");
         reject(request.error);
       };

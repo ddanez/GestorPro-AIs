@@ -35,7 +35,7 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
   else console.log('🗄️ SQLite conectado en:', DB_PATH);
 });
 
-const VALID_STORES = ['products', 'customers', 'suppliers', 'sales', 'purchases', 'settings', 'sellers', 'payments', 'users', 'authenticators', 'expenses', 'movements', 'ingredients', 'recipes'];
+const VALID_STORES = ['products', 'customers', 'suppliers', 'sales', 'purchases', 'settings', 'sellers', 'payments', 'users', 'authenticators', 'expenses', 'movements', 'ingredients', 'recipes', 'promotions', 'customer_promotions'];
 
 db.serialize(() => {
   VALID_STORES.forEach(store => {

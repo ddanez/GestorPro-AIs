@@ -38,20 +38,37 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('active_tab');
     return (saved as AppTab) || AppTab.DASHBOARD;
   });
-  const [showSplash, setShowSplash] = useState(() => {
-    // Si ya tenemos sesión, intentamos que el splash sea más corto o no aparezca si es un "resume" reciente
-    const lastActive = localStorage.getItem('last_active_time');
-    if (lastActive) {
-      const diff = Date.now() - parseInt(lastActive);
-      if (diff < 30 * 60 * 1000) { // 30 minutos
-        return false;
-      }
-    }
-    return true;
-  });
+  const [showSplash, setShowSplash] = useState(true);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [showPermissionNudge, setShowPermissionNudge] = useState(false);
   const [showExchangeModal, setShowExchangeModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [showPermissionNudge, setShowPermissionNudge] = useState(false);
+
+  // Efecto para controlar la duración mínima del Splash
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isDataLoaded || !user) {
+        setShowSplash(false);
+      }
+    }, 2000); // Mínimo 2 segundos de splash para que se vea bien
+
+    // Timeout de seguridad: desaparecer tras 10 segundos pase lo que pase
+    const safetyTimer = setTimeout(() => {
+      setShowSplash(false);
+    }, 10000);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(safetyTimer);
+    };
+  }, [isDataLoaded, user]);
+
+  // Si los datos se cargan, y ya pasó el tiempo mínimo, quitamos el splash
+  useEffect(() => {
+    if (isDataLoaded && !showSplash) {
+      localStorage.setItem('last_active_time', Date.now().toString());
+    }
+  }, [isDataLoaded, showSplash]);
 
   const [company, setCompany] = useState<CompanyInfo>({
     name: "D'DANEZ DISTRIBUCIONES",
@@ -132,18 +149,7 @@ const App: React.FC = () => {
     } catch (err) {
       console.error("Error al cargar datos:", err);
     } finally {
-      // Si es una recarga rápida (resume), quitamos el splash casi de inmediato
-      const lastActive = localStorage.getItem('last_active_time');
-      const isQuickResume = lastActive && (Date.now() - parseInt(lastActive) < 30 * 60 * 1000);
-      
-      if (isQuickResume) {
-        setShowSplash(false);
-      } else {
-        setTimeout(() => {
-          setShowSplash(false);
-          localStorage.setItem('last_active_time', Date.now().toString());
-        }, 1500);
-      }
+      setIsDataLoaded(true);
     }
   }, [user]);
 
