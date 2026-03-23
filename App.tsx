@@ -30,6 +30,7 @@ import ExchangeRateModal from './components/ExchangeRateModal';
 import Auth from './components/Auth';
 import Manufacturing from './components/Manufacturing';
 import Promotions from './components/Promotions';
+import { PWAInstallNudge } from './components/PWAInstallNudge';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -37,7 +38,17 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('active_tab');
     return (saved as AppTab) || AppTab.DASHBOARD;
   });
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(() => {
+    // Si ya tenemos sesión, intentamos que el splash sea más corto o no aparezca si es un "resume" reciente
+    const lastActive = localStorage.getItem('last_active_time');
+    if (lastActive) {
+      const diff = Date.now() - parseInt(lastActive);
+      if (diff < 30 * 60 * 1000) { // 30 minutos
+        return false;
+      }
+    }
+    return true;
+  });
   const [showExchangeModal, setShowExchangeModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showPermissionNudge, setShowPermissionNudge] = useState(false);
@@ -121,7 +132,18 @@ const App: React.FC = () => {
     } catch (err) {
       console.error("Error al cargar datos:", err);
     } finally {
-      setTimeout(() => setShowSplash(false), 1500);
+      // Si es una recarga rápida (resume), quitamos el splash casi de inmediato
+      const lastActive = localStorage.getItem('last_active_time');
+      const isQuickResume = lastActive && (Date.now() - parseInt(lastActive) < 30 * 60 * 1000);
+      
+      if (isQuickResume) {
+        setShowSplash(false);
+      } else {
+        setTimeout(() => {
+          setShowSplash(false);
+          localStorage.setItem('last_active_time', Date.now().toString());
+        }, 1500);
+      }
     }
   }, [user]);
 
@@ -153,29 +175,47 @@ const App: React.FC = () => {
     }
   }, [activeTab, user]);
 
-  // Manejo del botón atrás para evitar salir de la app accidentalmente
+  // Manejo del botón atrás y visibilidad para evitar salir de la app accidentalmente
   useEffect(() => {
     if (!user) return;
 
     const handlePopState = (e: PopStateEvent) => {
-      // Evitamos que el botón atrás cierre la PWA
+      // Forzamos que el historial siempre tenga una entrada extra para capturar el botón atrás
       window.history.pushState(null, "", window.location.pathname);
+      console.log("Botón atrás capturado - Evitando cierre");
     };
 
+    // Inicializamos el historial con varias entradas para mayor seguridad
+    window.history.pushState(null, "", window.location.pathname);
     window.history.pushState(null, "", window.location.pathname);
     window.addEventListener('popstate', handlePopState);
     
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (user) {
-        e.preventDefault();
-        e.returnValue = '';
+    // Escuchar cuando la app vuelve a primer plano
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Al volver a primer plano, nos aseguramos de que el historial esté correcto
+        window.history.pushState(null, "", window.location.pathname);
+        localStorage.setItem('last_active_time', Date.now().toString());
+        console.log("App en primer plano - Restaurando estado");
       }
     };
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const handleUnload = () => {
+      localStorage.setItem('last_active_time', Date.now().toString());
+    };
+    window.addEventListener('unload', handleUnload);
+
+    // Actualizar el tiempo de actividad periódicamente
+    const activityInterval = setInterval(() => {
+      localStorage.setItem('last_active_time', Date.now().toString());
+    }, 60000); // Cada minuto
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('unload', handleUnload);
+      clearInterval(activityInterval);
     };
   }, [user]);
 
@@ -325,6 +365,8 @@ const App: React.FC = () => {
       </main>
 
       {showExchangeModal && <ExchangeRateModal onSave={handleUpdateExchangeRate} currentRate={settings.exchangeRate} />}
+      
+      <PWAInstallNudge />
     </div>
   );
 };

@@ -4,7 +4,7 @@
   "short_name": "D'Danez",
   "description": "Sistema integral de gestión de ventas e inventario local",
   "start_url": "/",
-  "display": "fullscreen",
+  "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
   "icons": [
