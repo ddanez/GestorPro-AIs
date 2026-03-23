@@ -33,7 +33,10 @@ import Promotions from './components/Promotions';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<AppTab>(AppTab.DASHBOARD);
+  const [activeTab, setActiveTab] = useState<AppTab>(() => {
+    const saved = localStorage.getItem('active_tab');
+    return (saved as AppTab) || AppTab.DASHBOARD;
+  });
   const [showSplash, setShowSplash] = useState(true);
   const [showExchangeModal, setShowExchangeModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -144,9 +147,43 @@ const App: React.FC = () => {
     }
   }, [user, loadData]);
 
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('active_tab', activeTab);
+    }
+  }, [activeTab, user]);
+
+  // Manejo del botón atrás para evitar salir de la app accidentalmente
+  useEffect(() => {
+    if (!user) return;
+
+    const handlePopState = (e: PopStateEvent) => {
+      // Evitamos que el botón atrás cierre la PWA
+      window.history.pushState(null, "", window.location.pathname);
+    };
+
+    window.history.pushState(null, "", window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+    
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (user) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [user]);
+
   const handleLogout = () => {
+    if (!confirm('¿ESTÁ SEGURO QUE DESEA SALIR DE LA APLICACIÓN?')) return;
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user_data');
+    localStorage.removeItem('active_tab');
     setUser(null);
     dbService.setToken(null);
   };
@@ -262,7 +299,7 @@ const App: React.FC = () => {
             onClick={handleLogout}
             className="w-full py-3 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
           >
-            <X size={14} /> Cerrar Sesión
+            <X size={14} /> Salir del Sistema
           </button>
         </div>
       </aside>
