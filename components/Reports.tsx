@@ -57,6 +57,8 @@ type ReportType =
 const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, customers, suppliers, settings, movements }) => {
   const [selectedReport, setSelectedReport] = useState<ReportType | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
   const reportCards = [
     { id: 'transactions_day', title: 'Transacciones Por Día', icon: <Calendar size={24} />, color: 'bg-emerald-500' },
@@ -71,7 +73,6 @@ const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, custom
     { id: 'suppliers_ranking', title: 'Ranking Proveedores', icon: <Truck size={24} />, color: 'bg-cyan-600' },
     { id: 'product_waste', title: 'Merma Productos', icon: <Trash2 size={24} />, color: 'bg-yellow-600' },
     { id: 'payment_methods', title: 'Forma Pago', icon: <Wallet size={24} />, color: 'bg-teal-600' },
-    { id: 'inventory_adjustments', title: 'Modificación Inventario', icon: <ClipboardList size={24} />, color: 'bg-slate-600' },
   ];
   const chartData = [
     { name: 'Ventas', total: sales.reduce((sum, s) => sum + s.totalUSD, 0) },
@@ -154,32 +155,67 @@ const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, custom
 
       case 'transactions_summary':
         title = "Resumen de Transacciones";
+        const filteredSales = sales.filter(s => s.date.split('T')[0] >= startDate && s.date.split('T')[0] <= endDate);
+        const filteredPurchases = purchases.filter(p => p.date.split('T')[0] >= startDate && p.date.split('T')[0] <= endDate);
+        const filteredExpenses = expenses.filter(e => e.date.split('T')[0] >= startDate && e.date.split('T')[0] <= endDate);
+
+        const currentTotalSales = filteredSales.reduce((sum, s) => sum + s.totalUSD, 0);
+        const currentTotalPurchases = filteredPurchases.reduce((sum, p) => sum + p.totalUSD, 0);
+        const currentTotalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amountUSD, 0);
+        const currentEstimatedProfit = currentTotalSales - currentTotalPurchases - currentTotalExpenses;
+
+        const currentTotalSalesBS = filteredSales.reduce((sum, s) => sum + calculateBS(s.totalUSD, s.status, s.exchangeRate, settings.exchangeRate), 0);
+        const currentTotalPurchasesBS = filteredPurchases.reduce((sum, p) => sum + calculateBS(p.totalUSD, p.status, p.exchangeRate, settings.exchangeRate), 0);
+        const currentTotalExpensesBS = filteredExpenses.reduce((sum, e) => sum + e.amountBS, 0);
+        const currentEstimatedProfitBS = currentTotalSalesBS - currentTotalPurchasesBS - currentTotalExpensesBS;
+
         content = (
           <div className="space-y-6">
+            <div className="bg-[#1e293b] p-6 rounded-2xl border border-slate-700 flex flex-col md:flex-row items-center gap-4">
+              <div className="flex-1 w-full">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Desde</label>
+                <input 
+                  type="date" 
+                  value={startDate} 
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-orange-500" 
+                />
+              </div>
+              <div className="flex-1 w-full">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Hasta</label>
+                <input 
+                  type="date" 
+                  value={endDate} 
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-orange-500" 
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-[#1e293b] p-6 rounded-2xl border border-slate-700">
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Ventas</p>
-                <p className="text-2xl font-black text-emerald-400">${totalSales.toFixed(2)}</p>
-                <p className="text-sm text-slate-400">Bs. {totalSalesBS.toFixed(2)}</p>
+                <p className="text-2xl font-black text-emerald-400">${currentTotalSales.toFixed(2)}</p>
+                <p className="text-sm text-slate-400">Bs. {currentTotalSalesBS.toFixed(2)}</p>
               </div>
               <div className="bg-[#1e293b] p-6 rounded-2xl border border-slate-700">
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Compras</p>
-                <p className="text-2xl font-black text-rose-400">${totalPurchases.toFixed(2)}</p>
-                <p className="text-sm text-slate-400">Bs. {totalPurchasesBS.toFixed(2)}</p>
+                <p className="text-2xl font-black text-rose-400">${currentTotalPurchases.toFixed(2)}</p>
+                <p className="text-sm text-slate-400">Bs. {currentTotalPurchasesBS.toFixed(2)}</p>
               </div>
               <div className="bg-[#1e293b] p-6 rounded-2xl border border-slate-700">
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Gastos</p>
-                <p className="text-2xl font-black text-rose-400">${totalExpenses.toFixed(2)}</p>
-                <p className="text-sm text-slate-400">Bs. {totalExpensesBS.toFixed(2)}</p>
+                <p className="text-2xl font-black text-rose-400">${currentTotalExpenses.toFixed(2)}</p>
+                <p className="text-sm text-slate-400">Bs. {currentTotalExpensesBS.toFixed(2)}</p>
               </div>
             </div>
             <div className="bg-[#1e293b] p-6 rounded-2xl border border-slate-700">
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Utilidad Estimada</p>
-              <p className={`text-3xl font-black ${estimatedProfit >= 0 ? 'text-emerald-400' : 'text-rose-500'}`}>
-                ${estimatedProfit.toFixed(2)}
+              <p className={`text-3xl font-black ${currentEstimatedProfit >= 0 ? 'text-emerald-400' : 'text-rose-500'}`}>
+                ${currentEstimatedProfit.toFixed(2)}
               </p>
-              <p className={`text-lg font-bold ${estimatedProfitBS >= 0 ? 'text-emerald-500/70' : 'text-rose-500/70'}`}>
-                Bs. {estimatedProfitBS.toFixed(2)}
+              <p className={`text-lg font-bold ${currentEstimatedProfitBS >= 0 ? 'text-emerald-500/70' : 'text-rose-500/70'}`}>
+                Bs. {currentEstimatedProfitBS.toFixed(2)}
               </p>
             </div>
           </div>
@@ -220,12 +256,48 @@ const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, custom
 
       case 'product_waste':
         title = "Merma de Productos";
+        const filteredMovements = movements.filter(m => 
+          m.type === 'merma' && 
+          m.date.split('T')[0] >= startDate && 
+          m.date.split('T')[0] <= endDate
+        );
+
+        const wasteByProduct = filteredMovements.reduce((acc: { [key: string]: number }, m) => {
+          acc[m.productId] = (acc[m.productId] || 0) + Math.abs(m.quantity);
+          return acc;
+        }, {});
+
         const wasteProducts = products
-          .filter(p => (p.mermaTotal || 0) > 0)
-          .sort((a, b) => (b.mermaTotal || 0) - (a.mermaTotal || 0));
+          .filter(p => wasteByProduct[p.id] > 0)
+          .map(p => ({
+            ...p,
+            periodWaste: wasteByProduct[p.id]
+          }))
+          .sort((a, b) => b.periodWaste - a.periodWaste);
         
         content = (
           <div className="space-y-4">
+            <div className="bg-[#1e293b] p-6 rounded-2xl border border-slate-700 flex flex-col md:flex-row items-center gap-4">
+              <div className="flex-1 w-full">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Desde</label>
+                <input 
+                  type="date" 
+                  value={startDate} 
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-orange-500" 
+                />
+              </div>
+              <div className="flex-1 w-full">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Hasta</label>
+                <input 
+                  type="date" 
+                  value={endDate} 
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-orange-500" 
+                />
+              </div>
+            </div>
+
             <div className="bg-[#0f172a] rounded-2xl overflow-hidden border border-slate-800">
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#1e293b] text-slate-400 font-black uppercase tracking-widest">
@@ -238,17 +310,22 @@ const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, custom
                 </thead>
                 <tbody className="divide-y divide-slate-800">
                   {wasteProducts.map((p, i) => {
-                    const valorUSD = (p.mermaTotal || 0) * p.costUSD;
-                    const valorBS = calculateBS(valorUSD, 'pending', undefined, settings.exchangeRate); // Merma is current value
+                    const valorUSD = p.periodWaste * p.costUSD;
+                    const valorBS = calculateBS(valorUSD, 'pending', undefined, settings.exchangeRate);
                     return (
                       <tr key={i} className="hover:bg-slate-800/50 transition-colors">
                         <td className="p-4 font-bold">{p.name}</td>
-                        <td className="p-4 text-right font-black text-rose-400">{p.mermaTotal}</td>
+                        <td className="p-4 text-right font-black text-rose-400">{p.periodWaste % 1 === 0 ? p.periodWaste : p.periodWaste.toFixed(2)}</td>
                         <td className="p-4 text-right font-black text-slate-400">${valorUSD.toFixed(2)}</td>
                         <td className="p-4 text-right font-black text-emerald-400">Bs. {valorBS.toFixed(2)}</td>
                       </tr>
                     );
                   })}
+                  {wasteProducts.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="p-8 text-center text-slate-500 font-bold uppercase italic">No hay merma registrada en este periodo</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
