@@ -154,6 +154,17 @@ export const DebtReportModal: React.FC<Props> = ({
               </div>
            </div>
 
+           <div className="border-t border-black pt-5 mb-5">
+              <div className="border border-dotted border-black p-3 text-center bg-slate-50">
+                 <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 leading-none">Datos para Pago Móvil</p>
+                 <div className="space-y-1">
+                    <p className="uppercase font-black text-[12px] leading-none">{company.bank || 'BANCO DE VENEZUELA'}</p>
+                    <p className="font-black text-[14px] leading-none">{company.mobilePhone || 'N/A'}</p>
+                    <p className="font-black text-[12px] leading-none">V-{(company.dni || '').replace(/\D/g, '')}</p>
+                 </div>
+              </div>
+           </div>
+
            <div className="text-center font-black text-[10px] uppercase py-4 border-t border-black text-slate-400">
               *** FIN DEL REPORTE ***
            </div>

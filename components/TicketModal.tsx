@@ -216,13 +216,6 @@ export const TicketModal: React.FC<Props> = ({ isOpen, onClose, data, company, s
                      {/* Fix: changed saldoDeuda to saldoDeudor */}
                      <span className="text-right">US${(saldoDeudor || 0).toFixed(2).replace('.', ',')}</span>
                   </div>
-
-                  {settings.exchangeRate > 0 && (
-                    <div className="text-right text-[11px] font-black mt-1 pt-1 border-t border-dotted border-slate-300">
-                      {/* Fix: changed saldoDeuda to saldoDeudor */}
-                      {(saldoDeudor * (settings.exchangeRate || 0)).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs
-                    </div>
-                  )}
                 </>
               ) : (
                 <>
@@ -230,11 +223,6 @@ export const TicketModal: React.FC<Props> = ({ isOpen, onClose, data, company, s
                      <span className="uppercase">MONTO ABONADO</span>
                      <span className="text-right">US${(totalOperacion || 0).toFixed(2).replace('.', ',')}</span>
                   </div>
-                  {settings.exchangeRate > 0 && (
-                    <div className="text-right text-[13px] font-black mt-1">
-                      {(totalOperacion * (settings.exchangeRate || 0)).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs
-                    </div>
-                  )}
                 </>
               )}
            </div>
