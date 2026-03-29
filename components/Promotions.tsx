@@ -2,25 +2,28 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Tag, Plus, Search, Trash2, UserCheck, Gift, ChevronRight, 
-  CheckCircle2, Clock, AlertCircle, UserPlus, Package, Phone, X, Edit2
+  CheckCircle2, Clock, AlertCircle, UserPlus, Package, Phone, X, Edit2, FileText
 } from 'lucide-react';
-import { AppSettings, Customer, Product, Promotion, CustomerPromotion } from '../types';
+import { CompanyInfo, AppSettings, Customer, Product, Promotion, CustomerPromotion } from '../types';
 import { dbService } from '../db';
 import { CelebrationModal } from './CelebrationModal';
+import { PromotionReportModal } from './PromotionReportModal';
 
 interface PromotionsProps {
   settings: AppSettings;
+  company: CompanyInfo;
   customers: Customer[];
   products: Product[];
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
 }
 
-const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products, setProducts }) => {
+const Promotions: React.FC<PromotionsProps> = ({ settings, company, customers, products, setProducts }) => {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [customerPromotions, setCustomerPromotions] = useState<CustomerPromotion[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showPromoModal, setShowPromoModal] = useState(false);
   const [showRedeemModal, setShowRedeemModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [selectedPromo, setSelectedPromo] = useState<Promotion | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -345,6 +348,16 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products, 
               <div className="flex gap-2">
                 <button 
                   onClick={() => {
+                    setSelectedPromo(promo);
+                    setShowReportModal(true);
+                  }}
+                  className="p-3 text-slate-500 hover:text-emerald-500 transition-colors"
+                  title="Generar Reporte PDF"
+                >
+                  <FileText size={20} />
+                </button>
+                <button 
+                  onClick={() => {
                     setNewPromo(promo);
                     setShowPromoModal(true);
                   }}
@@ -454,6 +467,18 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, customers, products, 
         customerName={celebrationData.customerName}
         promotionName={celebrationData.promotionName}
       />
+
+      {selectedPromo && (
+        <PromotionReportModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          promotion={selectedPromo}
+          customerPromotions={customerPromotions}
+          customers={customers}
+          company={company}
+          settings={settings}
+        />
+      )}
 
       {/* New Promo Modal */}
       {showPromoModal && (
