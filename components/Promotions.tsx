@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Tag, Plus, Search, Trash2, UserCheck, Gift, ChevronRight, 
-  CheckCircle2, Clock, AlertCircle, UserPlus, Package, Phone, X, Edit2, FileText
+  CheckCircle2, Clock, AlertCircle, UserPlus, Package, Phone, X, Edit2, FileText, Settings2
 } from 'lucide-react';
 import { CompanyInfo, AppSettings, Customer, Product, Promotion, CustomerPromotion } from '../types';
 import { dbService } from '../db';
@@ -107,7 +107,7 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, company, customers, p
   const handleEnroll = async (customerId: string, promoId: string) => {
     try {
       const existing = customerPromotions.find(cp => cp.customerId === customerId && cp.promotionId === promoId);
-      if (existing) return;
+      if (existing) return existing;
 
       const updated: CustomerPromotion = {
         id: crypto.randomUUID(),
@@ -120,8 +120,10 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, company, customers, p
 
       await dbService.put('customer_promotions', updated);
       loadData();
+      return updated;
     } catch (err) {
       console.error("Error al inscribir cliente:", err);
+      return undefined;
     }
   };
 
@@ -216,6 +218,49 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, company, customers, p
       loadData();
     } catch (err) {
       console.error("Error al registrar compra:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleManualAdjustment = async (cpId: string) => {
+    const cp = customerPromotions.find(x => x.id === cpId);
+    if (!cp) return;
+
+    const newValue = prompt(`AJUSTE MANUAL: INGRESE EL NUEVO CONTEO PARA ESTE CLIENTE (ACTUAL: ${cp.currentCount})`, cp.currentCount.toString());
+    
+    if (newValue === null) return;
+    
+    const parsed = parseInt(newValue);
+    if (isNaN(parsed) || parsed < 0) {
+      alert('VALOR INVÁLIDO');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const updated: CustomerPromotion = {
+        ...cp,
+        currentCount: parsed,
+        lastUpdate: new Date().toISOString()
+      };
+
+      await dbService.put('customer_promotions', updated);
+      
+      // Verificar si completó la meta con el ajuste
+      const promo = promotions.find(p => p.id === cp.promotionId);
+      if (promo && cp.currentCount < promo.requiredQuantity && parsed >= promo.requiredQuantity) {
+        const customer = customers.find(c => c.id === cp.customerId);
+        setCelebrationData({
+          customerName: customer?.name || 'Cliente',
+          promotionName: promo.name
+        });
+        setShowCelebration(true);
+      }
+
+      loadData();
+    } catch (err) {
+      console.error("Error al ajustar conteo:", err);
     } finally {
       setIsSaving(false);
     }
@@ -434,14 +479,24 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, company, customers, p
                                 <Gift size={12} /> CANJEAR
                               </button>
                             ) : (
-                              <button 
-                                disabled={isSaving}
-                                onClick={() => handleAddPurchase(cp.customerId, promo.id)}
-                                className="bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-lg transition-all disabled:opacity-50"
-                                title="Registrar Compra (+1 y descuento stock)"
-                              >
-                                <Plus size={14} />
-                              </button>
+                              <div className="flex gap-1">
+                                <button 
+                                  disabled={isSaving}
+                                  onClick={() => handleManualAdjustment(cp.id)}
+                                  className="bg-slate-700/50 hover:bg-slate-700 text-slate-400 p-2 rounded-lg transition-all disabled:opacity-50"
+                                  title="Ajuste Manual (No afecta stock)"
+                                >
+                                  <Settings2 size={14} />
+                                </button>
+                                <button 
+                                  disabled={isSaving}
+                                  onClick={() => handleAddPurchase(cp.customerId, promo.id)}
+                                  className="bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-lg transition-all disabled:opacity-50"
+                                  title="Registrar Compra (+1 y descuento stock)"
+                                >
+                                  <Plus size={14} />
+                                </button>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -697,6 +752,29 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, company, customers, p
                   REGISTRAR COMPRA (+1)
                 </button>
               </div>
+
+              <button 
+                disabled={!selectedCustomer || isSaving}
+                onClick={async () => {
+                  if (selectedCustomer) {
+                    let cp = customerPromotions.find(x => x.customerId === selectedCustomer.id && x.promotionId === selectedPromo.id);
+                    if (!cp) {
+                      // Si no está inscrito, lo inscribimos primero
+                      cp = await handleEnroll(selectedCustomer.id, selectedPromo.id);
+                    }
+                    
+                    if (cp) {
+                      handleManualAdjustment(cp.id);
+                    }
+                    
+                    setShowRedeemModal(false);
+                    setSelectedCustomer(null);
+                  }
+                }}
+                className="w-full bg-slate-700/50 hover:bg-slate-700 text-slate-300 font-black py-4 rounded-xl transition-all uppercase text-[8px] tracking-widest border border-slate-600 flex items-center justify-center gap-2"
+              >
+                <Settings2 size={14} /> AJUSTE MANUAL (CORREGIR CONTEO)
+              </button>
             </div>
           </div>
         </div>

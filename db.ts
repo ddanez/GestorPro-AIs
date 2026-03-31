@@ -102,8 +102,7 @@ export class DBService {
             const store = await this.getStore(storeName, 'readwrite');
             
             if (data && data.length > 0) {
-              // El backend tiene datos, actualizamos lo local
-              store.clear();
+              // El backend tiene datos, actualizamos lo local sin borrar para no perder registros no sincronizados
               data.forEach((item: any) => store.put(item));
               return data;
             } else if (localData.length > 0) {
