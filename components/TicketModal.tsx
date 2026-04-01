@@ -139,7 +139,7 @@ export const TicketModal: React.FC<Props> = ({ isOpen, onClose, data, company, s
               <div className="border-t border-black pt-2 mt-2 space-y-1">
                  <div className="flex justify-between items-center">
                     <span className="font-bold uppercase text-[9px]">FOLIO:</span>
-                    <span className="font-black text-[11px]">{(data.id || '').slice(0, 10).toUpperCase()}</span>
+                    <span className="font-black text-[11px]">{(data.id || '').slice(-6).toUpperCase()}</span>
                  </div>
                  <div className="flex justify-between items-center whitespace-nowrap overflow-hidden">
                     <span className="font-bold uppercase text-[9px]">FECHA:</span>

@@ -135,11 +135,11 @@ export const DebtReportModal: React.FC<Props> = ({
                  <span className="text-right">US${totalPending.toFixed(2).replace('.', ',')}</span>
               </div>
               
-              {settings.exchangeRate > 0 && (
+              {/* {settings.exchangeRate > 0 && (
                 <div className="text-right text-[12px] font-black text-slate-600">
                   {calculateBS(totalPending, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
                 </div>
-              )}
+              )} */}
 
               {creditBalance > 0 && (
                 <div className="flex justify-between text-[11px] font-bold text-emerald-600 border-t border-dotted border-slate-300 pt-2">

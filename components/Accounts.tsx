@@ -498,7 +498,7 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-[8px] font-black text-slate-500 uppercase">Total en Bolívares</span>
-                  <span className="text-lg font-black text-emerald-400">{(amountToPay * settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.</span>
+                  {/* <span className="text-lg font-black text-emerald-400">{(amountToPay * settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.</span> */}
                 </div>
               </div>
 
