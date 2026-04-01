@@ -452,7 +452,7 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, company, customers, p
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                   {customerPromotions.filter(cp => cp.promotionId === promo.id).length === 0 ? (
                     <p className="text-[10px] font-bold text-slate-600 uppercase text-center py-4 italic">Sin actividad reciente</p>
-                  ) : customerPromotions.filter(cp => cp.promotionId === promo.id).map(cp => {
+                  ) : customerPromotions.filter(cp => cp.promotionId === promo.id).sort((a, b) => b.currentCount - a.currentCount).map(cp => {
                     const customer = customers.find(c => c.id === cp.customerId);
                     const progress = (cp.currentCount / promo.requiredQuantity) * 100;
                     const isReady = cp.currentCount >= promo.requiredQuantity;

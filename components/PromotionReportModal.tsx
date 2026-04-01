@@ -32,17 +32,31 @@ export const PromotionReportModal: React.FC<Props> = ({
     setIsGenerating(true);
     
     try {
-      const dataUrl = await htmlToImage.toPng(reportRef.current, {
+      const element = reportRef.current;
+      const dataUrl = await htmlToImage.toPng(element, {
         backgroundColor: '#fff',
-        pixelRatio: 2,
+        pixelRatio: 3,
         cacheBust: true,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
       });
 
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgProps = pdf.getImageProperties(dataUrl);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const imgProps = await new Promise<{ width: number; height: number }>((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve({ width: img.width, height: img.height });
+        img.src = dataUrl;
+      });
+
+      const pdfWidth = 210; // A4 width in mm
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
       
+      // Create PDF with custom height to fit all content
+      const pdf = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: [pdfWidth, pdfHeight]
+      });
+
       pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`Reporte_Promo_${promotion.name.replace(/\s+/g, '_')}.pdf`);
     } catch (err) {
@@ -53,7 +67,9 @@ export const PromotionReportModal: React.FC<Props> = ({
     }
   };
 
-  const promoCustomers = customerPromotions.filter(cp => cp.promotionId === promotion.id);
+  const promoCustomers = customerPromotions
+    .filter(cp => cp.promotionId === promotion.id)
+    .sort((a, b) => b.currentCount - a.currentCount);
 
   return (
     <div className="fixed inset-0 bg-black/95 z-[500] flex items-center justify-center p-2 backdrop-blur-sm overflow-y-auto print:p-0 print:bg-white">
