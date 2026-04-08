@@ -334,6 +334,16 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, company, customers, p
     }
   };
 
+  const handleDeleteCustomerFromPromo = async (cpId: string) => {
+    if (!confirm('¿ESTÁ SEGURO DE ELIMINAR A ESTE CLIENTE DE LA PROMOCIÓN?')) return;
+    try {
+      await dbService.delete('customer_promotions', cpId);
+      loadData();
+    } catch (err) {
+      console.error("Error al eliminar cliente de la promoción:", err);
+    }
+  };
+
   const filteredPromos = promotions.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -471,13 +481,23 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, company, customers, p
                           </div>
                           <div className="flex gap-2">
                             {isReady ? (
-                              <button 
-                                disabled={isSaving}
-                                onClick={() => handleRedeem(cp.id)}
-                                className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-1 disabled:opacity-50"
-                              >
-                                <Gift size={12} /> CANJEAR
-                              </button>
+                              <div className="flex gap-1">
+                                <button 
+                                  disabled={isSaving}
+                                  onClick={() => handleRedeem(cp.id)}
+                                  className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-1 disabled:opacity-50"
+                                >
+                                  <Gift size={12} /> CANJEAR
+                                </button>
+                                <button 
+                                  disabled={isSaving}
+                                  onClick={() => handleDeleteCustomerFromPromo(cp.id)}
+                                  className="bg-slate-700/50 hover:bg-rose-500/20 hover:text-rose-500 text-slate-400 p-2 rounded-lg transition-all disabled:opacity-50"
+                                  title="Eliminar de la promoción"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
                             ) : (
                               <div className="flex gap-1">
                                 <button 
@@ -495,6 +515,14 @@ const Promotions: React.FC<PromotionsProps> = ({ settings, company, customers, p
                                   title="Registrar Compra (+1 y descuento stock)"
                                 >
                                   <Plus size={14} />
+                                </button>
+                                <button 
+                                  disabled={isSaving}
+                                  onClick={() => handleDeleteCustomerFromPromo(cp.id)}
+                                  className="bg-slate-700/50 hover:bg-rose-500/20 hover:text-rose-500 text-slate-400 p-2 rounded-lg transition-all disabled:opacity-50"
+                                  title="Eliminar de la promoción"
+                                >
+                                  <Trash2 size={14} />
                                 </button>
                               </div>
                             )}
