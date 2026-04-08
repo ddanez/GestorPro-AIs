@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useRef } from 'react';
-import { CheckCircle2, DollarSign, Calendar, User, Truck, MessageCircle, Wallet, ChevronDown, ChevronUp, ArrowRight, FileUp, Loader2, AlertCircle, Search, Printer } from 'lucide-react';
+import { CheckCircle2, DollarSign, Calendar, User, Truck, MessageCircle, Wallet, ChevronDown, ChevronUp, ArrowRight, FileUp, Loader2, AlertCircle, Search, Printer, X, Trash2 } from 'lucide-react';
 import { AppSettings, Sale, Purchase, CompanyInfo, Customer, Supplier } from '../types';
 import { dbService } from '../db';
 import { parseNumber, calculateBS } from '../utils';
@@ -55,7 +55,10 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
       }
 
       // Agrupar por nombre normalizado para evitar duplicados visuales
-      const groupKey = entityName.toLowerCase().trim();
+      const groupKey = entityName.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar acentos
+        .replace(/[^a-z0-9]/g, '') // Quitar caracteres especiales
+        .trim();
       
       if (!acc[groupKey]) {
         const entity = type === 'cxc' 
@@ -79,7 +82,10 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
     // Add entities with credit balance even if no pending invoices
     const allEntities = type === 'cxc' ? customers : suppliers;
     allEntities.forEach(entity => {
-      const groupKey = entity.name.toLowerCase().trim();
+      const groupKey = entity.name.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar acentos
+        .replace(/[^a-z0-9]/g, '') // Quitar caracteres especiales
+        .trim();
       
       // Filter by search term if present
       if (searchTerm && !entity.name.toLowerCase().includes(searchTerm.toLowerCase().trim())) {
@@ -103,15 +109,27 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
   const handleProcessPayment = async () => {
     if (!paymentModal) return;
     
-    const { entityId, invoiceId } = paymentModal;
+    const { entityId, invoiceId, name } = paymentModal;
     let remaining = amountToPay;
     
-    const entityGroup = grouped.find(g => g.id === entityId || g.name === paymentModal.name);
+    // Buscar el grupo por ID o por nombre exacto para ser más robustos
+    const entityGroup = grouped.find(g => g.id === entityId) || grouped.find(g => g.name === name);
     if (!entityGroup) return;
 
-    const invoicesToUpdate = invoiceId 
-      ? [entityGroup.invoices.find(i => i.id === invoiceId)!] 
-      : [...entityGroup.invoices].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    let invoicesToUpdate: (Sale | Purchase)[] = [];
+    
+    if (invoiceId) {
+      const targetInv = entityGroup.invoices.find(i => i.id === invoiceId);
+      if (targetInv) {
+        invoicesToUpdate = [targetInv];
+      }
+    } else {
+      invoicesToUpdate = [...entityGroup.invoices].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }
+
+    if (invoicesToUpdate.length === 0 && !invoiceId) {
+      // Si no hay facturas pero hay monto, podría ser un abono a cuenta general
+    }
 
     for (const inv of invoicesToUpdate) {
       if (remaining <= 0) break;
@@ -171,6 +189,17 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
     setPaymentModal(null);
     setAmountToPay(0);
     onUpdate();
+  };
+
+  const handleDeleteInvoice = async (id: string) => {
+    if (!confirm('¿ESTÁ SEGURO DE ELIMINAR ESTA DEUDA? ESTA ACCIÓN NO SE PUEDE DESHACER.')) return;
+    try {
+      await dbService.delete(type === 'cxc' ? 'sales' : 'purchases', id);
+      onUpdate();
+    } catch (err) {
+      console.error("Error al eliminar deuda:", err);
+      alert("Error al eliminar la deuda.");
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -368,6 +397,24 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
                       <Printer size={16} />
                     </button>
                     <button 
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!confirm(`¿ESTÁ SEGURO DE ELIMINAR TODAS LAS DEUDAS DE ${group.name.toUpperCase()}? ESTA ACCIÓN NO SE PUEDE DESHACER.`)) return;
+                        try {
+                          for (const inv of group.invoices) {
+                            await dbService.delete(type === 'cxc' ? 'sales' : 'purchases', inv.id);
+                          }
+                          onUpdate();
+                        } catch (err) {
+                          console.error("Error al eliminar deudas del grupo:", err);
+                        }
+                      }}
+                      className="p-2 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all"
+                      title="Eliminar todas las deudas de este cliente"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                    <button 
                       onClick={(e) => { 
                         e.stopPropagation();
                         setPaymentModal({ entityId: group.id, name: group.name, balance: group.totalPending }); 
@@ -416,15 +463,25 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
                               <p className="text-[7px] text-slate-400 font-black uppercase">{calculateBS(invBalance, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.</p>
                               <p className="text-[7px] text-slate-500 font-bold uppercase">Original: ${inv.totalUSD.toFixed(2)}</p>
                             </div>
-                            <button 
-                              onClick={() => { 
-                                setPaymentModal({ entityId: group.id, name: group.name, invoiceId: inv.id, balance: invBalance }); 
-                                setAmountToPay(invBalance); 
-                              }}
-                              className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-all"
-                            >
-                              <ArrowRight size={12} />
-                            </button>
+                            <div className="flex gap-1">
+                              <button 
+                                onClick={() => { 
+                                  setPaymentModal({ entityId: group.id, name: group.name, invoiceId: inv.id, balance: invBalance }); 
+                                  setAmountToPay(invBalance); 
+                                }}
+                                className="p-1.5 bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-lg transition-all"
+                                title="Abonar a esta factura"
+                              >
+                                <ArrowRight size={12} />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteInvoice(inv.id)}
+                                className="p-1.5 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white rounded-lg transition-all"
+                                title="Eliminar deuda"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       );
