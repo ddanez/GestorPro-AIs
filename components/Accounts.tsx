@@ -1,11 +1,12 @@
 
 import React, { useState, useMemo, useRef } from 'react';
-import { CheckCircle2, DollarSign, Calendar, User, Truck, MessageCircle, Wallet, ChevronDown, ChevronUp, ArrowRight, FileUp, Loader2, AlertCircle, Search, Printer, X, Trash2 } from 'lucide-react';
+import { CheckCircle2, DollarSign, Calendar, User, Truck, MessageCircle, Wallet, ChevronDown, ChevronUp, ArrowRight, FileUp, Loader2, AlertCircle, Search, Printer, X, Trash2, FileText } from 'lucide-react';
 import { AppSettings, Sale, Purchase, CompanyInfo, Customer, Supplier } from '../types';
 import { dbService } from '../db';
 import { parseNumber, calculateBS } from '../utils';
 import { TicketModal } from './TicketModal';
 import { DebtReportModal } from './DebtReportModal';
+import { GlobalAccountsReportModal } from './GlobalAccountsReportModal';
 import { PDFImportService, ExtractedDebt } from '../services/pdfImportService';
 
 interface Props {
@@ -28,6 +29,7 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
   const [viewMode, setViewMode] = useState<'grouped' | 'chronological'>('grouped');
   const [searchTerm, setSearchTerm] = useState('');
   const [printReportData, setPrintReportData] = useState<any>(null);
+  const [showGlobalReport, setShowGlobalReport] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const chronologicalItems = useMemo(() => {
@@ -284,14 +286,23 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
               <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Importar Cuentas</h4>
               <p className="text-[8px] text-slate-500 font-bold uppercase">Sube un PDF de tu sistema anterior</p>
             </div>
-            <button 
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isImporting}
-              className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-lg disabled:opacity-50"
-            >
-              {isImporting ? <Loader2 size={14} className="animate-spin" /> : <FileUp size={14} />}
-              {isImporting ? 'Procesando...' : 'Subir PDF'}
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setShowGlobalReport(true)}
+                className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-lg"
+              >
+                <FileText size={14} className="text-orange-500" />
+                Reporte General
+              </button>
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isImporting}
+                className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-lg disabled:opacity-50"
+              >
+                {isImporting ? <Loader2 size={14} className="animate-spin" /> : <FileUp size={14} />}
+                {isImporting ? 'Procesando...' : 'Subir PDF'}
+              </button>
+            </div>
             <input 
               type="file" 
               ref={fileInputRef} 
@@ -586,6 +597,17 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
           invoices={printReportData.invoices}
           totalPending={printReportData.totalPending}
           creditBalance={printReportData.creditBalance}
+          company={company}
+          settings={settings}
+          type={type}
+        />
+      )}
+
+      {showGlobalReport && (
+        <GlobalAccountsReportModal
+          isOpen={showGlobalReport}
+          onClose={() => setShowGlobalReport(false)}
+          data={grouped}
           company={company}
           settings={settings}
           type={type}
