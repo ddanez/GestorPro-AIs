@@ -60,20 +60,32 @@ export const GlobalAccountsReportModal: React.FC<Props> = ({
     setIsGenerating(true);
     
     try {
-      // Temporarily set a fixed width for the capture if needed
+      // Pequeña pausa para asegurar que el DOM esté listo
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       const dataUrl = await htmlToImage.toPng(reportRef.current, {
         backgroundColor: '#fff',
-        pixelRatio: 3,
+        pixelRatio: 2, // Reducido un poco para mayor compatibilidad en móviles
         cacheBust: true,
       });
 
+      const fileName = `Reporte_General_${type.toUpperCase()}_${new Date().toISOString().split('T')[0]}.png`;
+      
       const link = document.createElement('a');
-      link.download = `Reporte_General_${type.toUpperCase()}_${new Date().toISOString().split('T')[0]}.png`;
+      link.style.display = 'none';
       link.href = dataUrl;
+      link.download = fileName;
+      
+      document.body.appendChild(link);
       link.click();
+      
+      setTimeout(() => {
+        document.body.removeChild(link);
+      }, 100);
+
     } catch (err) {
       console.error('Error al generar imagen:', err);
-      alert('No se pudo generar la imagen.');
+      alert('No se pudo generar la imagen. Intente de nuevo.');
     } finally {
       setIsGenerating(false);
     }
