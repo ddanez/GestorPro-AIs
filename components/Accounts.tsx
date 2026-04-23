@@ -218,15 +218,21 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-[#1e293b] p-4 rounded-2xl border border-slate-700 shadow-lg">
+        <div className="bg-[#1e293b] p-4 rounded-2xl border border-slate-700 shadow-lg relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+            <DollarSign size={40} className="text-rose-500" />
+          </div>
           <p className="text-[8px] font-black text-rose-500 uppercase tracking-widest leading-none mb-1">Total Pendiente</p>
-          <p className="text-xl font-black text-white leading-none">${(totalPending || 0).toFixed(2)}</p>
-          <p className="text-[10px] font-black text-slate-400 mt-1">{calculateBS(totalPending, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.</p>
+          <p className="text-xl font-black text-white leading-none tracking-tighter">${(totalPending || 0).toFixed(2)}</p>
+          <p className="text-[9px] font-black text-slate-400 mt-1.5 uppercase leading-none">{calculateBS(totalPending, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.</p>
         </div>
-        <div className="bg-[#1e293b] p-4 rounded-2xl border border-slate-700 shadow-lg">
-          <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest leading-none mb-1">Saldo a Favor</p>
-          <p className="text-xl font-black text-white leading-none">${(totalCredit || 0).toFixed(2)}</p>
-          <p className="text-[10px] font-black text-slate-400 mt-1">{calculateBS(totalCredit, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.</p>
+        <div className="bg-[#1e293b] p-4 rounded-2xl border border-slate-700 shadow-lg relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Wallet size={40} className="text-emerald-500" />
+          </div>
+          <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest leading-none mb-1" title="Saldos anticipados o abonos excedentes de clientes">Saldo a Favor</p>
+          <p className="text-xl font-black text-white leading-none tracking-tighter">${(totalCredit || 0).toFixed(2)}</p>
+          <p className="text-[9px] font-black text-slate-400 mt-1.5 uppercase leading-none">{calculateBS(totalCredit, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.</p>
         </div>
       </div>
 
@@ -261,78 +267,87 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
           grouped.map(group => {
             const isExpanded = expandedId === group.id;
             return (
-              <div key={group.id} className="bg-[#1e293b] rounded-2xl border border-slate-700 overflow-hidden transition-all">
+              <div key={group.id} className="bg-[#1e293b] rounded-2xl border border-slate-700 overflow-hidden transition-all shadow-md active:scale-[0.99] duration-200">
                 <div 
-                  className="p-4 flex justify-between items-center gap-4 cursor-pointer hover:bg-slate-800/50"
+                  className="p-4 cursor-pointer hover:bg-slate-800/30"
                   onClick={() => setExpandedId(isExpanded ? null : group.id)}
                 >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="w-10 h-10 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center shrink-0">
-                      {type === 'cxc' ? <User size={18} /> : <Truck size={18} />}
-                    </div>
-                    <div className="truncate">
-                      <p className="font-black text-xs text-white leading-tight uppercase truncate">{group.name}</p>
-                      <div className="flex flex-col mt-0.5">
-                        {group.totalPending > 0 && (
-                          <div className="flex gap-2">
-                            <p className="text-[8px] text-rose-500 font-black uppercase">Deuda: ${group.totalPending.toFixed(2)}</p>
-                            <p className="text-[8px] text-slate-400 font-black uppercase">({calculateBS(group.totalPending, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.)</p>
+                  <div className="flex flex-col gap-3">
+                    {/* Top Row: Icon + Name + Chevron */}
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="w-10 h-10 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
+                          {type === 'cxc' ? <User size={18} /> : <Truck size={18} />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-black text-[13px] text-white leading-tight uppercase break-words">{group.name}</p>
+                          <div className="flex flex-wrap gap-x-3 mt-1.5 pt-1.5 border-t border-slate-700/50">
+                            {group.totalPending > 0 && (
+                              <div className="flex flex-col">
+                                <p className="text-[7.5px] text-rose-500/70 font-black uppercase tracking-tighter">Deuda Total</p>
+                                <p className="text-[10px] text-rose-500 font-black uppercase tracking-tight">${group.totalPending.toFixed(2)}</p>
+                              </div>
+                            )}
+                            {group.creditBalance > 0 && (
+                              <div className="flex flex-col">
+                                <p className="text-[7.5px] text-emerald-500/70 font-black uppercase tracking-tighter">Saldo a Favor</p>
+                                <p className="text-[10px] text-emerald-500 font-black uppercase tracking-tight">${group.creditBalance.toFixed(2)}</p>
+                              </div>
+                            )}
                           </div>
-                        )}
-                        {group.creditBalance > 0 && (
-                          <div className="flex gap-2">
-                            <p className="text-[8px] text-emerald-500 font-black uppercase">Crédito: ${group.creditBalance.toFixed(2)}</p>
-                            <p className="text-[8px] text-slate-400 font-black uppercase">({calculateBS(group.creditBalance, 'pending', undefined, settings.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.)</p>
-                          </div>
-                        )}
+                        </div>
+                      </div>
+                      <div className="shrink-0 pt-2">
+                        {isExpanded ? <ChevronUp size={20} className="text-slate-500 transition-transform duration-300" /> : <ChevronDown size={20} className="text-slate-500 transition-transform duration-300" />}
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPrintReportData({
-                          entityName: group.name,
-                          invoices: group.invoices,
-                          totalPending: group.totalPending,
-                          creditBalance: group.creditBalance
-                        });
-                      }}
-                      className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all"
-                      title="Imprimir Deuda Detallada"
-                    >
-                      <Printer size={16} />
-                    </button>
-                    <button 
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        if (!confirm(`¿ESTÁ SEGURO DE ELIMINAR TODAS LAS DEUDAS DE ${group.name.toUpperCase()}? ESTA ACCIÓN NO SE PUEDE DESHACER.`)) return;
-                        try {
-                          for (const inv of group.invoices) {
-                            await dbService.delete(type === 'cxc' ? 'sales' : 'purchases', inv.id);
+
+                    {/* Bottom Row: Action Buttons */}
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-700/30">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPrintReportData({
+                            entityName: group.name,
+                            invoices: group.invoices,
+                            totalPending: group.totalPending,
+                            creditBalance: group.creditBalance
+                          });
+                        }}
+                        className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all flex items-center gap-2"
+                        title="Imprimir Deuda Detallada"
+                      >
+                        <Printer size={14} />
+                      </button>
+                      <button 
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (!confirm(`¿ESTÁ SEGURO DE ELIMINAR TODAS LAS DEUDAS DE ${group.name.toUpperCase()}? ESTA ACCIÓN NO SE PUEDE DESHACER.`)) return;
+                          try {
+                            for (const inv of group.invoices) {
+                              await dbService.delete(type === 'cxc' ? 'sales' : 'purchases', inv.id);
+                            }
+                            onUpdate();
+                          } catch (err) {
+                            console.error("Error al eliminar deudas del grupo:", err);
                           }
-                          onUpdate();
-                        } catch (err) {
-                          console.error("Error al eliminar deudas del grupo:", err);
-                        }
-                      }}
-                      className="p-2 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all"
-                      title="Eliminar todas las deudas de este cliente"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                    <button 
-                      onClick={(e) => { 
-                        e.stopPropagation();
-                        setPaymentModal({ entityId: group.id, name: group.name, balance: group.totalPending }); 
-                        setAmountToPay(group.totalPending); 
-                      }}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl font-black text-[8px] uppercase tracking-widest transition-all shadow-md"
-                    >
-                      ABONAR
-                    </button>
-                    {isExpanded ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
+                        }}
+                        className="p-2.5 bg-rose-500/5 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all"
+                        title="Eliminar todas las deudas"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                      <button 
+                        onClick={(e) => { 
+                          e.stopPropagation();
+                          setPaymentModal({ entityId: group.id, name: group.name, balance: group.totalPending }); 
+                          setAmountToPay(group.totalPending); 
+                        }}
+                        className="flex-1 max-w-[120px] bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-md active:scale-95"
+                      >
+                        ABONAR
+                      </button>
+                    </div>
                   </div>
                 </div>
 
