@@ -41,31 +41,42 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
   }, [items, searchTerm, type]);
 
   const grouped = useMemo(() => {
-    const acc: Record<string, { id: string, name: string, totalPending: number, invoices: (Sale | Purchase)[], creditBalance: number }> = {};
+    const acc: Record<string, { groupKey: string, id: string, name: string, totalPending: number, invoices: (Sale | Purchase)[], creditBalance: number }> = {};
     
     items.forEach(item => {
       const entityId = type === 'cxc' ? (item as Sale).customerId : (item as Purchase).supplierId;
       const entityName = type === 'cxc' ? (item as Sale).customerName : (item as Purchase).supplierName;
       
+      const hasValidId = entityId && entityId !== 'N/A' && entityId !== 'import' && entityId !== 'undefined';
+      const entity = hasValidId 
+        ? (type === 'cxc' ? customers.find(c => c.id === entityId) : suppliers.find(s => s.id === entityId))
+        : null;
+
+      const currentName = entity ? entity.name : entityName;
+
       // Filter by search term if present
-      if (searchTerm && !entityName.toLowerCase().includes(searchTerm.toLowerCase().trim())) {
-        return;
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase().trim();
+        const matchesCurrentName = currentName.toLowerCase().includes(term);
+        const matchesOriginalName = entityName.toLowerCase().includes(term);
+        if (!matchesCurrentName && !matchesOriginalName) {
+          return;
+        }
       }
 
-      // Agrupar por nombre normalizado para evitar duplicados visuales
-      const groupKey = entityName.toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar acentos
-        .replace(/[^a-z0-9]/g, '') // Quitar caracteres especiales
-        .trim();
+      // Group key is the customer's ID if found, otherwise normalized name
+      const groupKey = entity 
+        ? entity.id 
+        : entityName.toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar acentos
+            .replace(/[^a-z0-9]/g, '') // Quitar caracteres especiales
+            .trim();
       
       if (!acc[groupKey]) {
-        const entity = type === 'cxc' 
-          ? customers.find(c => c.id === entityId || c.name.toLowerCase().trim() === groupKey) 
-          : suppliers.find(s => s.id === entityId || s.name.toLowerCase().trim() === groupKey);
-          
         acc[groupKey] = {
-          id: entityId,
-          name: entityName,
+          groupKey,
+          id: entity ? entity.id : (entityId || groupKey),
+          name: currentName,
           totalPending: 0,
           invoices: [],
           creditBalance: entity?.creditBalanceUSD || 0
@@ -80,10 +91,7 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
     // Add entities with credit balance even if no pending invoices
     const allEntities = type === 'cxc' ? customers : suppliers;
     allEntities.forEach(entity => {
-      const groupKey = entity.name.toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar acentos
-        .replace(/[^a-z0-9]/g, '') // Quitar caracteres especiales
-        .trim();
+      const groupKey = entity.id;
       
       // Filter by search term if present
       if (searchTerm && !entity.name.toLowerCase().includes(searchTerm.toLowerCase().trim())) {
@@ -92,6 +100,7 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
 
       if ((entity.creditBalanceUSD || 0) > 0 && !acc[groupKey]) {
         acc[groupKey] = {
+          groupKey,
           id: entity.id,
           name: entity.name,
           totalPending: 0,
@@ -267,7 +276,7 @@ const Accounts: React.FC<Props> = ({ type, items, settings, company, onUpdate, c
           grouped.map(group => {
             const isExpanded = expandedId === group.id;
             return (
-              <div key={group.id} className="bg-[#1e293b] rounded-2xl border border-slate-700 overflow-hidden transition-all shadow-md active:scale-[0.99] duration-200">
+              <div key={group.groupKey} className="bg-[#1e293b] rounded-2xl border border-slate-700 overflow-hidden transition-all shadow-md active:scale-[0.99] duration-200">
                 <div 
                   className="p-4 cursor-pointer hover:bg-slate-800/30"
                   onClick={() => setExpandedId(isExpanded ? null : group.id)}
