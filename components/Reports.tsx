@@ -274,6 +274,18 @@ const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, custom
             periodWaste: wasteByProduct[p.id]
           }))
           .sort((a, b) => b.periodWaste - a.periodWaste);
+
+        // Global statistics for the period
+        const totalWasteQty = wasteProducts.reduce((sum, p) => sum + p.periodWaste, 0);
+        const totalSoldQty = movements
+          .filter(m => m.type === 'sale' && m.date.split('T')[0] >= startDate && m.date.split('T')[0] <= endDate)
+          .reduce((sum, m) => sum + Math.abs(m.quantity), 0);
+        const globalWastePct = (totalWasteQty + totalSoldQty) > 0 
+          ? (totalWasteQty / (totalWasteQty + totalSoldQty)) * 100 
+          : 0;
+
+        const totalWasteUSDVal = wasteProducts.reduce((sum, p) => sum + (p.periodWaste * p.costUSD), 0);
+        const totalWasteBSVal = calculateBS(totalWasteUSDVal, 'pending', undefined, settings.exchangeRate);
         
         content = (
           <div className="space-y-4">
@@ -298,12 +310,34 @@ const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, custom
               </div>
             </div>
 
+            {/* Premium Period Summary Cards */}
+            {wasteProducts.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-[#1e293b]/50 p-4 rounded-2xl border border-slate-800">
+                  <p className="text-[8px] font-black text-rose-500 uppercase tracking-widest leading-none mb-1">Costo Total de Merma</p>
+                  <p className="text-lg font-black text-white leading-none">${totalWasteUSDVal.toFixed(2)}</p>
+                  <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase">Bs. {totalWasteBSVal.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</p>
+                </div>
+                <div className="bg-[#1e293b]/50 p-4 rounded-2xl border border-slate-800">
+                  <p className="text-[8px] font-black text-amber-500 uppercase tracking-widest leading-none mb-1">Unidades Mermadas</p>
+                  <p className="text-lg font-black text-white leading-none">{totalWasteQty % 1 === 0 ? totalWasteQty : totalWasteQty.toFixed(1)} uni.</p>
+                  <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase">En el período seleccionado</p>
+                </div>
+                <div className="bg-[#1e293b]/50 p-4 rounded-2xl border border-slate-800">
+                  <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest leading-none mb-1">% de Merma Global</p>
+                  <p className="text-lg font-black text-emerald-400 leading-none">{globalWastePct.toFixed(1)}%</p>
+                  <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase">De salidas totales del período</p>
+                </div>
+              </div>
+            )}
+
             <div className="bg-[#0f172a] rounded-2xl overflow-hidden border border-slate-800">
               <table className="w-full text-left text-xs">
-                <thead className="bg-[#1e293b] text-slate-400 font-black uppercase tracking-widest">
+                <thead className="bg-[#1e293b] text-slate-400 font-black uppercase tracking-widest text-[9px]">
                   <tr>
                     <th className="p-4">Producto</th>
-                    <th className="p-4 text-right">Cantidad Merma</th>
+                    <th className="p-4 text-right">Cant. Merma</th>
+                    <th className="p-4 text-right" title="Porcentaje de unidades mermadas sobre la salida total (Ventas + Merma) de este producto en el período">% Merma / Salidas</th>
                     <th className="p-4 text-right">Valor Est. (USD)</th>
                     <th className="p-4 text-right">Valor Est. (BS)</th>
                   </tr>
@@ -312,18 +346,37 @@ const Reports: React.FC<Props> = ({ sales, purchases, expenses, products, custom
                   {wasteProducts.map((p, i) => {
                     const valorUSD = p.periodWaste * p.costUSD;
                     const valorBS = calculateBS(valorUSD, 'pending', undefined, settings.exchangeRate);
+                    
+                    const soldQty = movements
+                      .filter(m => m.productId === p.id && m.type === 'sale' && m.date.split('T')[0] >= startDate && m.date.split('T')[0] <= endDate)
+                      .reduce((sum, m) => sum + Math.abs(m.quantity), 0);
+                    
+                    const totalOutflow = p.periodWaste + soldQty;
+                    const percentage = totalOutflow > 0 ? (p.periodWaste / totalOutflow) * 100 : 0;
+
                     return (
                       <tr key={i} className="hover:bg-slate-800/50 transition-colors">
-                        <td className="p-4 font-bold">{p.name}</td>
+                        <td className="p-4 font-bold">
+                          <div>
+                            <p>{p.name}</p>
+                            <p className="text-[7.5px] text-slate-500 font-bold uppercase mt-0.5">Vendido: {soldQty % 1 === 0 ? soldQty : soldQty.toFixed(1)} uni. en período</p>
+                          </div>
+                        </td>
                         <td className="p-4 text-right font-black text-rose-400">{p.periodWaste % 1 === 0 ? p.periodWaste : p.periodWaste.toFixed(2)}</td>
+                        <td className="p-4 text-right font-black">
+                          <span className={`text-[11px] ${percentage > 15 ? 'text-rose-500' : percentage > 5 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                            {percentage.toFixed(1)}%
+                          </span>
+                          <span className="block text-[7.5px] text-slate-500 font-medium uppercase tracking-tighter">de {totalOutflow % 1 === 0 ? totalOutflow : totalOutflow.toFixed(1)} salidas</span>
+                        </td>
                         <td className="p-4 text-right font-black text-slate-400">${valorUSD.toFixed(2)}</td>
-                        <td className="p-4 text-right font-black text-emerald-400">Bs. {valorBS.toFixed(2)}</td>
+                        <td className="p-4 text-right font-black text-emerald-400">Bs. {valorBS.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</td>
                       </tr>
                     );
                   })}
                   {wasteProducts.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="p-8 text-center text-slate-500 font-bold uppercase italic">No hay merma registrada en este periodo</td>
+                      <td colSpan={5} className="p-8 text-center text-slate-500 font-bold uppercase italic">No hay merma registrada en este periodo</td>
                     </tr>
                   )}
                 </tbody>
